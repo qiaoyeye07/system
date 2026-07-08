@@ -1,0 +1,57 @@
+<template>
+  <div class="product-card" @click="$router.push(`/product/${product.id}`)">
+    <div class="card-image">
+      <img v-if="product.firstImage" :src="product.firstImage" :alt="product.title" />
+      <div v-else class="no-image">暂无图片</div>
+    </div>
+    <div class="card-body">
+      <h3 class="card-title">{{ product.title }}</h3>
+      <p class="card-price">¥{{ product.price?.toFixed(2) }}</p>
+      <div class="card-meta">
+        <span class="condition">{{ conditionText }}</span>
+        <span class="time">{{ timeText }}</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  product: { type: Object, required: true }
+})
+
+const conditionMap = { NEW: '全新', LIKE_NEW: '几乎全新', USED: '有使用痕迹' }
+const conditionText = computed(() => conditionMap[props.product.condition] || '')
+
+const timeText = computed(() => {
+  if (!props.product.createdAt) return ''
+  const diff = Date.now() - new Date(props.product.createdAt).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return '刚刚'
+  if (hours < 24) return `${hours}小时前`
+  return `${Math.floor(hours / 24)}天前`
+})
+</script>
+
+<style scoped>
+.product-card {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.product-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+.card-image { width: 100%; height: 180px; overflow: hidden; background: #f0f0f0; }
+.card-image img { width: 100%; height: 100%; object-fit: cover; }
+.no-image {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: #999; font-size: 14px;
+}
+.card-body { padding: 12px; }
+.card-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8px; }
+.card-price { color: #ff4d4f; font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+</style>
