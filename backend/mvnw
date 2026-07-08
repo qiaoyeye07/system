@@ -1,0 +1,107 @@
+#!/bin/sh
+# Maven Wrapper for Unix/macOS/Git Bash
+# ----------------------------------------------------------------------------
+
+# Locate Java
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVA_EXEC="$JAVA_HOME/bin/java"
+else
+    JAVA_EXEC="$(command -v java 2>/dev/null)"
+fi
+
+if [ -z "$JAVA_EXEC" ]; then
+    echo "ERROR: Java not found. Please install JDK 17+." >&2
+    exit 1
+fi
+
+# Locate script directory
+PRG="$0"
+while [ -h "$PRG" ]; do
+    ls=$(ls -ld "$PRG")
+    link=$(expr "$ls" : '.*-> \(.*\)$')
+    if expr "$link" : '/.*' >/dev/null; then
+        PRG="$link"
+    else
+        PRG=$(dirname "$PRG")/"$link"
+    fi
+done
+SAVED="$(pwd)"
+cd "$(dirname "$PRG")/" >/dev/null
+APP_HOME="$(pwd -P)"
+cd "$SAVED" >/dev/null
+
+# Wrapper config
+WRAPPER_DIR="$APP_HOME/.mvn/wrapper"
+WRAPPER_JAR="$WRAPPER_DIR/maven-wrapper.jar"
+WRAPPER_PROPERTIES="$WRAPPER_DIR/maven-wrapper.properties"
+
+# Ensure wrapper jar exists
+if [ ! -f "$WRAPPER_JAR" ]; then
+    # Download wrapper jar
+    WRAPPER_URL=$(grep 'wrapperUrl' "$WRAPPER_PROPERTIES" 2>/dev/null | cut -d= -f2-)
+    if [ -z "$WRAPPER_URL" ]; then
+        WRAPPER_URL="https://repo.maven.apache.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar"
+    fi
+    echo "Downloading Maven Wrapper..."
+    mkdir -p "$WRAPPER_DIR"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$WRAPPER_URL" -o "$WRAPPER_JAR"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$WRAPPER_URL" -O "$WRAPPER_JAR"
+    else
+        echo "ERROR: curl or wget required to download Maven Wrapper." >&2
+        exit 1
+    fi
+fi
+
+# Ensure distribution exists
+DIST_URL=$(grep 'distributionUrl' "$WRAPPER_PROPERTIES" 2>/dev/null | cut -d= -f2-)
+DIST_NAME=$(basename "$DIST_URL")
+DIST_DIR="$HOME/.m2/wrapper/dists/$(echo "$DIST_URL" | sed 's|https://repo.maven.apache.org/maven2/||' | sed 's|/|-|g' | sed 's|\.zip$||')"
+
+# Download and extract Maven distribution if needed
+if [ ! -d "$DIST_DIR" ] || [ ! -f "$DIST_DIR/bin/mvn" ]; then
+    echo "Downloading Maven distribution..."
+    mkdir -p "$DIST_DIR"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$DIST_URL" -o "$DIST_DIR/maven.zip"
+    else
+        wget -q "$DIST_URL" -O "$DIST_DIR/maven.zip"
+    fi
+    unzip -qo "$DIST_DIR/maven.zip" -d "$DIST_DIR"
+    rm -f "$DIST_DIR/maven.zip"
+fi
+
+# Build classpath
+CLASSPATH="$WRAPPER_JAR"
+MAVEN_HOME=$(ls -d "$DIST_DIR"/apache-maven-* 2>/dev/null | head -1)
+if [ -z "$MAVEN_HOME" ]; then
+    # Try to find the extracted directory
+    for d in "$DIST_DIR"/*/; do
+        if [ -f "$d/bin/mvn" ]; then
+            MAVEN_HOME="$d"
+            break
+        fi
+    done
+fi
+
+MVN_CMD="$MAVEN_HOME/bin/mvn"
+if [ ! -f "$MVN_CMD" ]; then
+    echo "ERROR: Could not find mvn in $MAVEN_HOME" >&2
+    exit 1
+fi
+
+# Set M2_HOME
+M2_HOME="$MAVEN_HOME"
+export M2_HOME
+
+# Run Maven
+exec "$JAVA_EXEC" \
+    $MAVEN_OPTS \
+    $MAVEN_DEBUG_OPTS \
+    -classpath "$CLASSPATH" \
+    "-Dmaven.home=$M2_HOME" \
+    "-Dmaven.multiModuleProjectDirectory=$APP_HOME" \
+    "-Dmaven.wrapper.properties=$WRAPPER_PROPERTIES" \
+    org.apache.maven.wrapper.MavenWrapperMain \
+    "$@"
