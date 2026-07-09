@@ -8,10 +8,18 @@ import com.fleamarket.security.SecurityUtils;
 import com.fleamarket.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,6 +28,27 @@ public class ChatController {
 
     private final ChatService chatService;
 
+    @Value("${app.upload.path:./uploads}")
+    private String uploadPath;
+
+    @PostMapping("/chat/upload-image")
+    public ApiResponse<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty() || file.getSize() > 5 * 1024 * 1024) {
+            return ApiResponse.error(com.fleamarket.exception.ErrorCode.BAD_REQUEST, "图片大小不能超过 5MB");
+        }
+        String ext = ".jpg";
+        String original = file.getOriginalFilename();
+        if (original != null && original.contains(".")) {
+            ext = original.substring(original.lastIndexOf(".")).toLowerCase();
+        }
+        String name = UUID.randomUUID().toString().substring(0, 8) + ext;
+        Path dir = Paths.get(uploadPath, "chat").toAbsolutePath().normalize();
+        File dirFile = dir.toFile();
+        if (!dirFile.exists()) dirFile.mkdirs();
+        file.transferTo(new File(dirFile, name));
+        return ApiResponse.success(Map.of("url", "/uploads/chat/" + name));
+    }
+
     @PostMapping("/chat/send")
     public ApiResponse<MessageResponse> sendMessage(@Valid @RequestBody SendMessageRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -27,7 +56,9 @@ public class ChatController {
                 userId,
                 request.getReceiverId(),
                 request.getProductId(),
-                request.getContent()));
+                request.getContent(),
+                request.getMessageType(),
+                request.getAttachmentUrl()));
     }
 
     @GetMapping("/chat/conversation/{contactId}")

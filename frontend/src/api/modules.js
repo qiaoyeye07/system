@@ -73,6 +73,12 @@ export const chatAPI = {
   getContacts: () => api.get('/chat/contacts'),
   getMessages: (contactId, params) => api.get(`/chat/conversation/${contactId}`, { params }),
   send: (data) => api.post('/chat/send', data),
+  sendMedia: (formData) => api.post('/chat/send-media', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  uploadImage: (formData) => api.post('/chat/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   markRead: (contactId, params) => api.patch(`/chat/conversation/${contactId}/read`, null, { params }),
   getUnreadCount: () => api.get('/chat/unread-count'),
   deleteConversation: (contactId, params) => api.delete(`/chat/conversation/${contactId}`, { params })

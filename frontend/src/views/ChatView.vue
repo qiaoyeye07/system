@@ -63,7 +63,10 @@
           <div class="message-list" ref="msgList">
             <LoadingState v-if="loadingMessages" />
             <div v-for="msg in messages" :key="msg.id" class="message" :class="{ mine: Number(msg.senderId) === Number(myId) }">
-              <div class="msg-content">{{ msg.content }}</div>
+              <div class="msg-content">
+                <img v-if="msg.messageType === 'IMAGE'" :src="msg.attachmentUrl" class="msg-img" @click="window.open(msg.attachmentUrl)" />
+                <template v-else>{{ msg.content }}</template>
+              </div>
               <div class="msg-meta">
                 <span class="msg-time">{{ formatMessageTime(msg.createdAt) }}</span>
                 <span v-if="Number(msg.senderId) === Number(myId)" class="msg-status" :class="{ read: msg.isRead }">{{ msg.isRead ? '已读' : '未读' }}</span>
@@ -74,7 +77,13 @@
 
           <div class="chat-input">
             <input v-model="newMsg" type="text" placeholder="输入消息..." :disabled="sending" @keyup.enter="sendMessage" />
-            <button @click="sendMessage" :disabled="sending || !newMsg.trim()">{{ sending ? '发送中...' : '发送' }}</button>
+            <input type="file" ref="fileInput" accept="image/*" style="display:none" @change="onFileSelected" />
+            <button class="btn-attach" :disabled="sending" @click="$refs.fileInput.click()">🖼</button>
+            <button @click="sendMessage" :disabled="sending || (!newMsg.trim() && !pendingFile)">{{ sending ? '发送中...' : '发送' }}</button>
+          </div>
+          <div v-if="pendingPreview" class="img-preview">
+            <img :src="pendingPreview" />
+            <button @click="pendingPreview='';pendingFile=null">✕</button>
           </div>
         </template>
       </section>
@@ -103,6 +112,8 @@ const newMsg = ref('')
 const loadingContacts = ref(false)
 const loadingMessages = ref(false)
 const sending = ref(false)
+const pendingPreview = ref('')
+const pendingFile = ref(null)
 const msgList = ref(null)
 
 const newContactId = ref('')
@@ -253,10 +264,28 @@ const openChat = async (contactId, productId, fallbackName = '') => {
 }
 
 const sendMessage = async () => {
-  if (sending.value || !newMsg.value.trim() || !activeContact.value) return
+  if (sending.value || !activeContact.value) return
+  if (!newMsg.value.trim() && !pendingFile.value) return
   sending.value = true
   try {
-    const res = await chatAPI.send({ receiverId: activeContact.value, productId: activeProductId.value, content: newMsg.value.trim() })
+    let attachmentUrl = ''
+    if (pendingFile.value) {
+      const fd = new FormData()
+      fd.append('file', pendingFile.value)
+      const up = await chatAPI.uploadImage(fd)
+      attachmentUrl = up.data?.url || ''
+      pendingPreview.value = ''
+      pendingFile.value = null
+    }
+    const content = attachmentUrl ? '[图片]' : newMsg.value.trim()
+    if (!content) { sending.value = false; return }
+    const res = await chatAPI.send({
+      receiverId: activeContact.value,
+      productId: activeProductId.value,
+      content,
+      messageType: attachmentUrl ? 'IMAGE' : 'TEXT',
+      attachmentUrl: attachmentUrl || undefined
+    })
     if (res.data) messages.value.push(res.data)
     newMsg.value = ''
     nextTick(scrollToBottom)
@@ -266,6 +295,15 @@ const sendMessage = async () => {
   } finally {
     sending.value = false
   }
+}
+
+const onFileSelected = (e) => {
+  const f = e.target.files[0]
+  if (!f) return
+  if (f.size > 5*1024*1024) { alert('图片不超过 5MB'); return }
+  pendingFile.value = f
+  pendingPreview.value = URL.createObjectURL(f)
+  e.target.value = ''
 }
 
 const scrollToBottom = () => {
@@ -357,6 +395,11 @@ onBeforeUnmount(() => {
 .chat-input input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
 .chat-input button { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
 .chat-input button:disabled { background: #91d5ff; }
+.btn-attach { background: #f0f0f0 !important; color: #333 !important; padding: 8px 12px !important; }
+.img-preview { padding: 8px 16px; border-top: 1px solid #f0f0f0; display:flex; align-items:center; gap:8px; }
+.img-preview img { max-height: 100px; border-radius: 4px; }
+.img-preview button { background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; }
+.msg-img { max-width: 200px; max-height: 260px; border-radius: 8px; cursor: pointer; }
 .context-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; }
 .context-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); padding: 4px 0; min-width: 120px; }
 .context-item { padding: 8px 16px; font-size: 13px; cursor: pointer; }

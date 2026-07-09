@@ -16,4 +16,7 @@ public class SendMessageRequest {
     @NotBlank(message = "消息内容不能为空")
     @Size(min = 1, max = 2000, message = "消息内容最长 2000 个字符")
     private String content;
+
+    private String messageType;
+    private String attachmentUrl;
 }

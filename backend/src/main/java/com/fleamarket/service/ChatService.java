@@ -31,7 +31,9 @@ public class ChatService {
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
-    public MessageResponse sendMessage(Long senderId, Long receiverId, Long productId, String content) {
+    public MessageResponse sendMessage(Long senderId, Long receiverId, Long productId, String content,
+                                       String messageType, String attachmentUrl) {
+        String type = (messageType != null && !messageType.isEmpty()) ? messageType : "TEXT";
         if (content == null || content.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "消息内容不能为空");
         }
@@ -59,6 +61,8 @@ public class ChatService {
                 .receiver(receiver)
                 .product(product)
                 .content(content.trim())
+                .messageType(type)
+                .attachmentUrl(attachmentUrl)
                 .isRead(false)
                 .build();
 
@@ -153,6 +157,8 @@ public class ChatService {
                 .productId(message.getProduct() != null ? message.getProduct().getId() : null)
                 .productTitle(message.getProduct() != null ? message.getProduct().getTitle() : null)
                 .content(message.getContent())
+                .messageType(message.getMessageType())
+                .attachmentUrl(message.getAttachmentUrl())
                 .isRead(message.getIsRead())
                 .createdAt(message.getCreatedAt())
                 .build();
