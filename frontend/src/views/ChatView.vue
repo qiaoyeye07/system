@@ -249,7 +249,6 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
   await fetchMessages()
-  await fetchContacts()
   fetchProductInfo(activeProductId.value)
 }
 
