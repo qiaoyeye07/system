@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,9 +28,14 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public MessageResponse sendMessage(Long senderId, Long receiverId, Long productId, String content) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "消息内容不能为空");
+        }
+
         if (senderId.equals(receiverId)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "不能给自己发消息");
         }
@@ -57,10 +63,12 @@ public class ChatService {
                 .build();
 
         message = messageRepository.save(message);
-        return toResponse(message);
+        MessageResponse response = toResponse(message);
+        messagingTemplate.convertAndSend("/queue/chat/" + receiverId, response);
+        return response;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<MessageResponse> getConversation(Long userId, Long contactId, Long productId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -95,7 +103,7 @@ public class ChatService {
             String key = contactId + "_" + (msg.getProduct() != null ? msg.getProduct().getId() : 0);
 
             if (!contactMap.containsKey(key)) {
-                long unreadCount = countUnread(userId, contactId);
+                long unreadCount = countUnread(userId, contactId, msg.getProduct() != null ? msg.getProduct().getId() : null);
 
                 contactMap.put(key, ContactResponse.builder()
                         .contactId(contactId)
@@ -113,8 +121,18 @@ public class ChatService {
         return new ArrayList<>(contactMap.values());
     }
 
-    private long countUnread(Long userId, Long contactId) {
-        return messageRepository.countUnreadByReceiver(userId);
+    @Transactional(readOnly = true)
+    public long getUnreadCount(Long userId) {
+        return messageRepository.countByReceiverIdAndIsReadFalse(userId);
+    }
+
+    @Transactional
+    public int markConversationAsRead(Long userId, Long contactId, Long productId) {
+        return messageRepository.markConversationAsRead(userId, contactId, productId);
+    }
+
+    private long countUnread(Long userId, Long contactId, Long productId) {
+        return messageRepository.countUnreadByContact(userId, contactId, productId);
     }
 
     private MessageResponse toResponse(Message message) {

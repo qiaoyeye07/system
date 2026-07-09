@@ -38,7 +38,11 @@ if errorlevel 1 (
 :: --- Ensure Java in PATH -------------------------------------
 where java >nul 2>&1
 if errorlevel 1 (
-    if exist "C:\Program Files\Java\jdk-17\bin\java.exe" (
+    if exist "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot\bin\java.exe" (
+        set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+        set "PATH=%JAVA_HOME%\bin;%PATH%"
+    ) else if exist "C:\Program Files\Java\jdk-17\bin\java.exe" (
+        set "JAVA_HOME=C:\Program Files\Java\jdk-17"
         set "PATH=C:\Program Files\Java\jdk-17\bin;%PATH%"
     )
     where java >nul 2>&1 || (

@@ -2,22 +2,29 @@
   <header class="app-header">
     <h1 class="logo">二手交易平台</h1>
     <div class="header-right">
-      <span class="username">{{ user?.username }}</span>
-      <button class="btn-logout" @click="handleLogout">退出</button>
+      <template v-if="user">
+        <span class="username">{{ user.username }}</span>
+        <button class="btn-logout" @click="handleLogout">退出</button>
+      </template>
+      <template v-else>
+        <router-link to="/login" class="btn-login">登录</router-link>
+        <router-link to="/register" class="btn-register">注册</router-link>
+      </template>
     </div>
   </header>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../../store/user.js'
 
 const router = useRouter()
-const userStr = localStorage.getItem('user')
-const user = userStr ? JSON.parse(userStr) : null
+const store = useUserStore()
+const user = computed(() => store.state.user)
 
 const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  store.logout()
   router.push('/login')
 }
 </script>
@@ -43,4 +50,18 @@ const handleLogout = () => {
   border-radius: 4px;
 }
 .btn-logout:hover { border-color: #fff; }
+.btn-login {
+  color: #fff;
+  padding: 4px 16px;
+  text-decoration: none;
+}
+.btn-login:hover { color: #40a9ff; }
+.btn-register {
+  background: #1890ff;
+  color: #fff;
+  padding: 4px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.btn-register:hover { background: #40a9ff; color: #fff; }
 </style>

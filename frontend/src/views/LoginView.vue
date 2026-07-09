@@ -13,10 +13,12 @@
           <label>密码</label>
           <div class="password-wrap">
             <input v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="请输入密码" required />
-            <span class="pwd-toggle" @click="showPwd = !showPwd">{{ showPwd ? '🙈' : '👁' }}</span>
+            <span class="pwd-toggle" @click="showPwd = !showPwd">{{ showPwd ? '隐藏' : '显示' }}</span>
           </div>
         </div>
-        <button type="submit" class="btn-primary" :disabled="loading">登录</button>
+        <button type="submit" class="btn-primary" :disabled="loading">
+          {{ loading ? '登录中...' : '登录' }}
+        </button>
       </form>
       <p class="link-text">还没有账号？<router-link to="/register">立即注册</router-link></p>
     </div>
@@ -24,19 +26,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { authAPI } from '../api/modules.js'
 import { useUserStore } from '../store/user.js'
 
 const route = useRoute()
+const router = useRouter()
 const store = useUserStore()
 const loading = ref(false)
 const errorMsg = ref('')
 const showPwd = ref(false)
 const form = reactive({ username: '', password: '' })
 
-// Clear error when user starts typing
 watch(() => form.username, () => { errorMsg.value = '' })
 watch(() => form.password, () => { errorMsg.value = '' })
 
@@ -50,8 +52,7 @@ const handleLogin = async () => {
       username: res.data.username,
       role: res.data.role
     })
-    const redirect = route.query.redirect || '/'
-    window.location.href = redirect
+    router.push(route.query.redirect || '/')
   } catch (e) {
     errorMsg.value = e?.message || '登录失败，请重试'
   } finally {
@@ -70,8 +71,8 @@ const handleLogin = async () => {
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #333; }
 .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
 .password-wrap { position: relative; }
-.password-wrap input { padding-right: 36px; }
-.pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; font-size: 16px; }
+.password-wrap input { padding-right: 52px; }
+.pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; font-size: 12px; color: #1890ff; }
 .form-group input:focus { border-color: #1890ff; outline: none; box-shadow: 0 0 0 2px rgba(24,144,255,0.2); }
 .btn-primary { width: 100%; padding: 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 16px; }
 .btn-primary:hover { background: #40a9ff; }

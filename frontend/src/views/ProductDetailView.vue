@@ -141,7 +141,14 @@ const fetchProduct = async () => {
   }
 }
 
-const contactSeller = () => router.push({ path: '/chat', query: { contactId: product.value?.seller?.id, productId: props.id } })
+const contactSeller = () => router.push({
+  path: '/chat',
+  query: {
+    contactId: product.value?.sellerId,
+    contactName: product.value?.sellerName,
+    productId: props.id
+  }
+})
 const buyNow = async () => {
   try {
     const { orderAPI } = await import('../api/modules.js')

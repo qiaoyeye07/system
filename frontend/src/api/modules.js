@@ -66,13 +66,15 @@ export const swapAPI = {
 // 聊天
 export const chatAPI = {
   getContacts: () => api.get('/chat/contacts'),
-  getMessages: (contactId, params) => api.get(`/chat/${contactId}`, { params }),
+  getMessages: (contactId, params) => api.get(`/chat/conversation/${contactId}`, { params }),
+  send: (data) => api.post('/chat/send', data),
+  markRead: (contactId, params) => api.patch(`/chat/conversation/${contactId}/read`, null, { params }),
   getUnreadCount: () => api.get('/chat/unread-count')
 }
 
 // 评价
 export const ratingAPI = {
-  submit: (data) => api.post('/ratings', data)
+  submit: (data) => api.post('/ratings', { score: data.score }, { params: { orderId: data.orderId } })
 }
 
 // 举报

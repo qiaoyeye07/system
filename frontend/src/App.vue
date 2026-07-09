@@ -1,7 +1,7 @@
 <template>
   <div id="app-root">
-    <AppHeader v-if="isLoggedIn" />
-    <AppNav v-if="isLoggedIn" />
+    <AppHeader />
+    <AppNav />
     <main class="app-content">
       <router-view />
     </main>

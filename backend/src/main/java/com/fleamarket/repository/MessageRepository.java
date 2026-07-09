@@ -4,6 +4,7 @@ import com.fleamarket.domain.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,8 +24,24 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                                    @Param("productId") Long productId,
                                    Pageable pageable);
 
-    @Query("SELECT COUNT(m) FROM Message m WHERE m.receiver.id = :userId AND m.isRead = false")
-    long countUnreadByReceiver(@Param("userId") Long userId);
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.receiver.id = :receiverId " +
+           "AND m.sender.id = :senderId " +
+           "AND (:productId IS NULL OR m.product.id = :productId) " +
+           "AND m.isRead = false")
+    long countUnreadByContact(@Param("receiverId") Long receiverId,
+                              @Param("senderId") Long senderId,
+                              @Param("productId") Long productId);
+
+    long countByReceiverIdAndIsReadFalse(Long receiverId);
+
+    @Modifying
+    @Query("UPDATE Message m SET m.isRead = true WHERE m.receiver.id = :receiverId " +
+           "AND m.sender.id = :senderId " +
+           "AND (:productId IS NULL OR m.product.id = :productId) " +
+           "AND m.isRead = false")
+    int markConversationAsRead(@Param("receiverId") Long receiverId,
+                               @Param("senderId") Long senderId,
+                               @Param("productId") Long productId);
 
     @Query("SELECT m FROM Message m WHERE m.id IN " +
            "(SELECT MAX(m2.id) FROM Message m2 WHERE m2.sender.id = :userId OR m2.receiver.id = :userId GROUP BY " +

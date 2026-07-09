@@ -22,6 +22,7 @@ if (Test-Path ".env") {
 # --- Find mysql.exe ----------------------------------------------
 $SearchPaths = @(
     "C:\Program Files\MySQL\MySQL Workbench 8.0\mysql.exe",
+    "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe",
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe",
     "C:\Program Files\MySQL\MySQL Server 5.7\bin\mysql.exe",
     "D:\MySQL\bin\mysql.exe"

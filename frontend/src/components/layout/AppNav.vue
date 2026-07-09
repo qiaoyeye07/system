@@ -1,28 +1,32 @@
 <template>
   <nav class="app-nav">
-    <template v-if="user?.role === 'ADMIN'">
-      <router-link to="/">首页</router-link>
-      <router-link to="/chat">聊天</router-link>
-      <router-link to="/admin/users">用户管理</router-link>
-      <router-link to="/admin/categories">分类管理</router-link>
-      <router-link to="/admin/disputes">纠纷处理</router-link>
-      <router-link to="/admin/reports">举报处理</router-link>
-    </template>
-    <template v-else>
-      <router-link to="/">首页</router-link>
-      <router-link to="/publish">发布商品</router-link>
-      <router-link to="/my-products">我的商品</router-link>
-      <router-link to="/my-orders">我的订单</router-link>
-      <router-link to="/chat">聊天</router-link>
-      <router-link :to="`/user/${user?.id}`">个人主页</router-link>
-      <router-link to="/my-reports">我的举报</router-link>
+    <router-link to="/">首页</router-link>
+    <template v-if="user">
+      <template v-if="user.role === 'ADMIN'">
+        <router-link to="/chat">聊天</router-link>
+        <router-link to="/admin/users">用户管理</router-link>
+        <router-link to="/admin/categories">分类管理</router-link>
+        <router-link to="/admin/disputes">纠纷处理</router-link>
+        <router-link to="/admin/reports">举报处理</router-link>
+      </template>
+      <template v-else>
+        <router-link to="/publish">发布商品</router-link>
+        <router-link to="/my-products">我的商品</router-link>
+        <router-link to="/my-orders">我的订单</router-link>
+        <router-link to="/chat">聊天</router-link>
+        <router-link :to="`/user/${user.id}`">个人主页</router-link>
+        <router-link to="/my-reports">我的举报</router-link>
+      </template>
     </template>
   </nav>
 </template>
 
 <script setup>
-const userStr = localStorage.getItem('user')
-const user = userStr ? JSON.parse(userStr) : null
+import { computed } from 'vue'
+import { useUserStore } from '../../store/user.js'
+
+const store = useUserStore()
+const user = computed(() => store.state.user)
 </script>
 
 <style scoped>
