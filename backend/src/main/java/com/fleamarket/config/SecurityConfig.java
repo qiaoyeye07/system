@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/init").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}/products").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}/ratings").permitAll()

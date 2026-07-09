@@ -2,13 +2,13 @@
   <div class="chat-page">
     <div class="chat-layout">
       <aside class="contact-panel">
-        <h3>联系人</h3>
-        <div class="new-chat">
-          <input v-model="newContactId" type="number" placeholder="输入用户ID发起对话" @keyup.enter="startNewChat" />
-          <button @click="startNewChat" :disabled="!newContactId">发起</button>
+        <h3>消息</h3>
+        <div class="user-search">
+          <input v-model="userSearchKeyword" type="text" placeholder="搜索用户..." @keyup.enter="goToUserProfile" />
+          <button @click="goToUserProfile" :disabled="searchingUser || !userSearchKeyword.trim()">{{ searchingUser ? '搜索中...' : '搜索' }}</button>
         </div>
         <LoadingState v-if="loadingContacts" />
-        <EmptyState v-else-if="contacts.length === 0" text="暂无聊天记录" />
+        <EmptyState v-else-if="contacts.length === 0" text="暂无消息" />
         <div v-else class="contact-list">
           <div
             v-for="c in contacts"
@@ -94,7 +94,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { chatAPI, reportAPI, productAPI, orderAPI } from '../api/modules.js'
+import { chatAPI, reportAPI, productAPI, orderAPI, userAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
 
@@ -112,11 +112,13 @@ const newMsg = ref('')
 const loadingContacts = ref(false)
 const loadingMessages = ref(false)
 const sending = ref(false)
+const searchingUser = ref(false)
 const pendingPreview = ref('')
 const pendingFile = ref(null)
 const msgList = ref(null)
 
-const newContactId = ref('')
+const userSearchKeyword = ref('')
+const routeChatOpened = ref(false)
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -140,8 +142,9 @@ const fetchContacts = async () => {
     const res = await chatAPI.getContacts()
     contacts.value = res.data || []
     const contactId = route.query.contactId || route.params.contactId
-    if (contactId) {
+    if (contactId && !routeChatOpened.value) {
       const targetId = Number(contactId)
+      if (!Number.isFinite(targetId) || targetId <= 0) return
       const productId = route.query.productId ? Number(route.query.productId) : null
       let c = contacts.value.find(item => Number(item.contactId) === targetId && sameProduct(item.productId, productId))
       // If no existing conversation, create a placeholder so chat can start immediately
@@ -157,7 +160,8 @@ const fetchContacts = async () => {
         }
         contacts.value.unshift(c)
       }
-      openChat(c.contactId, c.productId)
+      routeChatOpened.value = true
+      await openChat(c.contactId, c.productId, c.contactName)
     }
   } catch (e) {
     contacts.value = []
@@ -246,11 +250,19 @@ const handleProductAction = async () => {
   }
 }
 
-const startNewChat = () => {
-  const id = parseInt(newContactId.value)
-  if (!id || id === myId) return
-  openChat(id, null, `用户${id}`)
-  newContactId.value = ''
+const goToUserProfile = async () => {
+  const username = userSearchKeyword.value.trim()
+  if (!username) return
+  searchingUser.value = true
+  try {
+    const res = await userAPI.searchByUsername(username)
+    router.push(`/user/${res.data.id}`)
+    userSearchKeyword.value = ''
+  } catch (e) {
+    alert(e?.message || '未找到该用户')
+  } finally {
+    searchingUser.value = false
+  }
 }
 
 const openChat = async (contactId, productId, fallbackName = '') => {
@@ -351,10 +363,10 @@ onBeforeUnmount(() => {
 .chat-layout { display: grid; grid-template-columns: 280px 1fr; height: 100%; gap: 16px; }
 .contact-panel { background: #fff; border-radius: 8px; padding: 16px; overflow-y: auto; }
 .contact-panel h3 { margin-bottom: 8px; font-size: 16px; }
-.new-chat { display: flex; gap: 6px; margin-bottom: 12px; }
-.new-chat input { flex: 1; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; }
-.new-chat button { padding: 4px 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 12px; white-space: nowrap; }
-.new-chat button:disabled { background: #91d5ff; }
+.user-search { display: flex; gap: 6px; margin-bottom: 12px; }
+.user-search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; }
+.user-search button { padding: 4px 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+.user-search button:disabled { background: #91d5ff; }
 .contact-item { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; }
 .contact-item:hover, .contact-item.active { background: #e6f7ff; }
 .contact-item.muted { opacity: 0.6; }

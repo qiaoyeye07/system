@@ -8,6 +8,7 @@ import com.fleamarket.dto.response.UserResponse;
 import com.fleamarket.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -60,6 +61,11 @@ public class AuthController {
         Long userId = com.fleamarket.security.SecurityUtils.getCurrentUserId();
         UserResponse user = authService.getUserById(userId);
         return ApiResponse.success(user);
+    }
+
+    @GetMapping("/api/users/search")
+    public ApiResponse<UserResponse> searchUser(@RequestParam String username) {
+        return ApiResponse.success(authService.getUserByUsername(username));
     }
 
     @GetMapping("/api/users/{id}")

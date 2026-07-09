@@ -97,6 +97,12 @@ public class AuthService {
         return toUserResponse(user);
     }
 
+    public UserResponse getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username.trim())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在"));
+        return toUserResponse(user);
+    }
+
     public Page<UserResponse> listUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(this::toUserResponse);
     }

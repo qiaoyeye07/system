@@ -11,6 +11,7 @@ export const authAPI = {
 // 用户
 export const userAPI = {
   getProfile: (id) => api.get(`/users/${id}`),
+  searchByUsername: (username) => api.get('/users/search', { params: { username } }),
   getProducts: (id, params) => api.get(`/users/${id}/products`, { params }),
   getRatings: (id) => api.get(`/users/${id}/ratings`)
 }
