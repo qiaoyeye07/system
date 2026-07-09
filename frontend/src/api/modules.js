@@ -91,6 +91,7 @@ export const adminAPI = {
   toggleUserStatus: (id, enabled) => api.put(`/admin/users/${id}/toggle-enabled`, null, { params: { enabled } }),
   getAllOrders: (params) => api.get('/admin/orders', { params }),
   getDisputes: (params) => api.get('/admin/disputes', { params }),
+  getDisputeDetail: (id) => api.get(`/admin/orders/${id}`),
   getOrderDetail: (id) => api.get(`/admin/orders/${id}`),
   judgeDispute: (id, data) => api.put(`/admin/disputes/${id}/judge`, data),
   getReports: (params) => api.get('/admin/reports', { params }),
