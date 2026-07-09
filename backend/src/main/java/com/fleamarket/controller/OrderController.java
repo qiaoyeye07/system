@@ -79,6 +79,13 @@ public class OrderController {
         return ApiResponse.success("已同意取消，订单已取消", order);
     }
 
+    @PostMapping("/orders/{id}/reject-cancel")
+    public ApiResponse<OrderResponse> rejectOrWithdrawCancel(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.rejectOrWithdrawCancel(userId, id);
+        return ApiResponse.success("操作成功", order);
+    }
+
     @PostMapping("/orders/{id}/refund")
     public ApiResponse<OrderResponse> requestRefund(@PathVariable Long id,
                                                      @Valid @RequestBody RefundRequest request) {
@@ -98,7 +105,22 @@ public class OrderController {
     public ApiResponse<OrderResponse> sellerRejectRefund(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.sellerRejectRefund(userId, id);
-        return ApiResponse.success("已拒绝退款，等待管理员介入", order);
+        return ApiResponse.success("已拒绝退款，等待买家处理", order);
+    }
+
+    @PostMapping("/orders/{id}/escalate")
+    public ApiResponse<OrderResponse> escalateToDispute(@PathVariable Long id,
+                                                         @Valid @RequestBody RefundRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.escalateToDispute(userId, id, request.getReason());
+        return ApiResponse.success("已申请管理员介入", order);
+    }
+
+    @PostMapping("/orders/{id}/cancel-refund")
+    public ApiResponse<OrderResponse> cancelRefund(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.cancelRefund(userId, id);
+        return ApiResponse.success("已取消退款申请", order);
     }
 
     // ==================== 以物易物 ====================

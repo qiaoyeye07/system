@@ -147,6 +147,33 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse rejectOrWithdrawCancel(Long userId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        boolean isBuyer = order.getBuyer().getId().equals(userId);
+        boolean isSeller = order.getSeller().getId().equals(userId);
+        if (!isBuyer && !isSeller) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!"PAID".equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持该操作");
+        }
+        if (order.getCancelReason() == null) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有待处理的取消申请");
+        }
+
+        String detail = isBuyer ? "买家撤销取消申请" : "卖家拒绝取消申请";
+        order.setCancelReason(null);
+        orderRepository.save(order);
+        createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
+                ActionType.CANCEL, "PAID", "PAID", detail);
+
+        return toResponse(order);
+    }
+
+    @Transactional
     public OrderResponse requestRefund(Long buyerId, Long orderId, String reason) {
         Order order = getOrder(orderId, buyerId, true);
         validateStatus(order, "RECEIVED", "申请退款");
@@ -176,10 +203,41 @@ public class OrderService {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有待处理的退款申请");
         }
 
-        order.setStatus("DISPUTE");
+        // 卖家拒绝退款，状态保持 RECEIVED，买家可选择是否申请管理员介入
         orderRepository.save(order);
-        createLog(order, order.getSeller(), ActionType.REJECT_REFUND, "RECEIVED", "DISPUTE",
-                "卖家拒绝退款");
+        createLog(order, order.getSeller(), ActionType.REJECT_REFUND, "RECEIVED", "RECEIVED",
+                "卖家拒绝退款，买家可申请管理员介入");
+
+        return toResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse escalateToDispute(Long buyerId, Long orderId, String reason) {
+        Order order = getOrder(orderId, buyerId, true);
+        validateStatus(order, "RECEIVED", "申请管理员介入");
+
+        order.setStatus("DISPUTE");
+        order.setRefundReason(reason);
+        orderRepository.save(order);
+        createLog(order, order.getBuyer(), ActionType.REQUEST_REFUND, "RECEIVED", "DISPUTE",
+                "买家申请管理员介入：" + reason);
+
+        return toResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse cancelRefund(Long buyerId, Long orderId) {
+        Order order = getOrder(orderId, buyerId, true);
+        validateStatus(order, "RECEIVED", "取消退款");
+
+        if (order.getRefundReason() == null) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有进行中的退款申请");
+        }
+
+        order.setRefundReason(null);
+        orderRepository.save(order);
+        createLog(order, order.getBuyer(), ActionType.CANCEL, "RECEIVED", "RECEIVED",
+                "买家取消退款申请");
 
         return toResponse(order);
     }

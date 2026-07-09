@@ -45,9 +45,13 @@ export const orderAPI = {
   ship: (id, data) => api.post(`/orders/${id}/ship`, data),
   receive: (id) => api.post(`/orders/${id}/receive`),
   cancel: (id, data) => api.post(`/orders/${id}/cancel`, data),
+  agreeCancel: (id) => api.post(`/orders/${id}/agree-cancel`),
+  rejectCancel: (id) => api.post(`/orders/${id}/reject-cancel`),
   refund: (id, data) => api.post(`/orders/${id}/refund`, data),
   agreeRefund: (id) => api.post(`/orders/${id}/refund/agree`),
-  rejectRefund: (id, data) => api.post(`/orders/${id}/refund/reject`, data)
+  rejectRefund: (id) => api.post(`/orders/${id}/refund/reject`),
+  escalate: (id, data) => api.post(`/orders/${id}/escalate`, data),
+  cancelRefund: (id) => api.post(`/orders/${id}/cancel-refund`)
 }
 
 // 交换
