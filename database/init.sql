@@ -171,19 +171,20 @@ CREATE TABLE report (
 
 -- ============================================================
 -- 密码说明：所有测试用户密码均为 "12345678"
--- BCrypt 哈希值（10 rounds）：$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe
+-- BCrypt 哈希值（10 rounds）：$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm
+-- 所有密码均为 12345678
 -- 实际项目中请在应用层使用 BCryptPasswordEncoder 生成
 -- 这里使用一个固定的测试哈希便于演示
 -- ============================================================
 
 -- 3.1 用户数据（1 个管理员 + 5 个普通用户）
 INSERT INTO `user` (id, username, password, role, enabled, created_at) VALUES
-(1,  'admin',    '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'ADMIN', 1, '2026-06-01 09:00:00'),
-(2,  'zhangsan', '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'USER',  1, '2026-06-15 10:30:00'),
-(3,  'lisi',     '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'USER',  1, '2026-06-20 14:00:00'),
-(4,  'wangwu',   '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'USER',  1, '2026-06-25 16:20:00'),
-(5,  'zhaoliu',  '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'USER',  1, '2026-07-01 11:00:00'),
-(6,  'sunqi',    '$2a$10$NkC5oFlow6o4MKJx7LzLweNqPH6g7M8S2a7xYm1PBjKjOcF3EK7Qe', 'USER',  0, '2026-07-02 08:30:00'); -- 被禁用用户
+(1,  'admin',    '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'ADMIN', 1, '2026-06-01 09:00:00'),
+(2,  'zhangsan', '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'USER',  1, '2026-06-15 10:30:00'),
+(3,  'lisi',     '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'USER',  1, '2026-06-20 14:00:00'),
+(4,  'wangwu',   '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'USER',  1, '2026-06-25 16:20:00'),
+(5,  'zhaoliu',  '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'USER',  1, '2026-07-01 11:00:00'),
+(6,  'sunqi',    '$2a$10$.118E.RRVkg4m.SjLyuY4e.Yf0FHEJV4muturde2vBOwKiylZycYm', 'USER',  0, '2026-07-02 08:30:00'); -- 被禁用用户
 
 -- 重置自增起点
 ALTER TABLE `user` AUTO_INCREMENT = 7;

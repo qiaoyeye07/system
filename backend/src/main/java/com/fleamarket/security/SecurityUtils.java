@@ -1,6 +1,8 @@
 package com.fleamarket.security;
 
 import com.fleamarket.domain.User;
+import com.fleamarket.exception.BusinessException;
+import com.fleamarket.exception.ErrorCode;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -13,7 +15,7 @@ public class SecurityUtils {
         if (authentication != null && authentication.getPrincipal() instanceof User) {
             return (User) authentication.getPrincipal();
         }
-        throw new RuntimeException("用户未登录");
+        throw new BusinessException(ErrorCode.UNAUTHORIZED);
     }
 
     public static Long getCurrentUserId() {
