@@ -126,15 +126,22 @@ public class ProductService {
     }
 
     public Page<ProductResponse> listActiveProducts(Long categoryId, String sort, Pageable pageable) {
+        return listActiveProducts(categoryId, sort, null, pageable);
+    }
+
+    public Page<ProductResponse> listActiveProducts(Long categoryId, String sort, Long excludeSellerId, Pageable pageable) {
         Sort sortObj = parseSort(sort);
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortObj);
 
+        Page<Product> page;
         if (categoryId != null) {
-            return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE, pageRequest)
-                    .map(this::toResponse);
+            page = productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE, pageRequest);
+        } else if (excludeSellerId != null) {
+            page = productRepository.findByStatusAndSellerIdNot(ProductStatus.ACTIVE, excludeSellerId, pageRequest);
+        } else {
+            page = productRepository.findByStatus(ProductStatus.ACTIVE, pageRequest);
         }
-        return productRepository.findByStatus(ProductStatus.ACTIVE, pageRequest)
-                .map(this::toResponse);
+        return page.map(this::toResponse);
     }
 
     public Page<ProductResponse> listByCategory(Long categoryId, String sort, Pageable pageable) {

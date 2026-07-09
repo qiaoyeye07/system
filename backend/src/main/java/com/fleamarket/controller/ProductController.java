@@ -29,7 +29,8 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ApiResponse.success(productService.listActiveProducts(categoryId, sort, pageable));
+        Long excludeSellerId = getCurrentUserIdOrNull();
+        return ApiResponse.success(productService.listActiveProducts(categoryId, sort, excludeSellerId, pageable));
     }
 
     @GetMapping("/products/category/{categoryId}")
@@ -113,9 +114,19 @@ public class ProductController {
     @GetMapping("/users/{id}/products")
     public ApiResponse<Page<ProductResponse>> listUserProducts(
             @PathVariable Long id,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size) {
+        String filterStatus = (status != null) ? status : "ACTIVE";
         Pageable pageable = PageRequest.of(page, size);
-        return ApiResponse.success(productService.listBySeller(id, "ACTIVE", pageable));
+        return ApiResponse.success(productService.listBySeller(id, filterStatus, pageable));
+    }
+
+    private Long getCurrentUserIdOrNull() {
+        try {
+            return SecurityUtils.getCurrentUserId();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
