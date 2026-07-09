@@ -12,7 +12,7 @@ const props = defineProps({
 const statusMap = {
   // 现金订单
   PENDING_PAY: '待付款', PAID: '已付款', SHIPPED: '已发货', RECEIVED: '已收货',
-  DISPUTE: '退款中', COMPLETED: '已完成', CANCELLED: '已取消',
+  DISPUTE: '纠纷中', COMPLETED: '已完成', CANCELLED: '已取消',
   // 交换订单
   PENDING_CONFIRM: '待确认', CONFIRMED: '已确认', BOTH_SHIPPED: '双方已发货',
   REJECTED: '已拒绝',

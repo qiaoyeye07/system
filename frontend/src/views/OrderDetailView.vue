@@ -30,8 +30,17 @@
             <button class="btn-primary" @click="doPay">付款</button>
             <button class="btn-danger" @click="confirmCancel">取消订单</button>
           </template>
-          <template v-if="order.status === 'PAID' && isBuyer">
+          <template v-if="order.status === 'PAID' && isBuyer && !order.cancelReason">
             <button @click="requestCancel">申请取消</button>
+          </template>
+          <template v-if="order.status === 'PAID' && isBuyer && order.cancelReason">
+            <p class="refund-info">取消申请中：{{ order.cancelReason }}</p>
+            <button @click="doCancelCancelRequest">撤销取消申请</button>
+          </template>
+          <template v-if="order.status === 'PAID' && isSeller && order.cancelReason">
+            <p class="refund-info">买家申请取消：{{ order.cancelReason }}</p>
+            <button class="btn-primary" @click="doAgreeCancel">同意取消</button>
+            <button class="btn-danger" @click="doRejectCancel">拒绝取消</button>
           </template>
           <template v-if="order.status === 'PAID' && isSeller">
             <button class="btn-primary" @click="showShipDialog = true">确认发货</button>
@@ -40,8 +49,28 @@
           <template v-if="order.status === 'SHIPPED' && isBuyer">
             <button class="btn-primary" @click="confirmReceive">确认收货</button>
           </template>
-          <template v-if="order.status === 'RECEIVED' && isBuyer">
+          <template v-if="order.status === 'RECEIVED' && isBuyer && !order.refundReason">
             <button @click="showRefundDialog = true">申请退款</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && !sellerRejectedRefund">
+            <p class="refund-info">退款中：{{ order.refundReason }}</p>
+            <button @click="doCancelRefund">取消退款申请</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && sellerRejectedRefund">
+            <p class="refund-info dispute-info">卖家已拒绝退款：{{ order.refundReason }}</p>
+            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason">
+            <p class="refund-info">买家申请退款：{{ order.refundReason }}</p>
+            <button class="btn-primary" @click="doAgreeRefund">同意退款</button>
+            <button class="btn-danger" @click="doRejectRefund">拒绝退款</button>
+          </template>
+          <template v-if="order.status === 'DISPUTE' && isBuyer">
+            <p class="refund-info dispute-info">已提交管理员仲裁，请等待处理</p>
+            <p v-if="order.refundReason" class="refund-detail">申诉理由：{{ order.refundReason }}</p>
+          </template>
+          <template v-if="order.status === 'DISPUTE' && isSeller">
+            <p class="refund-info dispute-info">买家已申请管理员介入，等待管理员裁决</p>
           </template>
           <template v-if="order.status === 'COMPLETED' && isParticipant">
             <button @click="showRating = true">评价对方</button>
@@ -75,6 +104,22 @@
           <div class="modal-actions">
             <button class="btn-cancel" @click="showShipDialog = false">取消</button>
             <button class="btn-primary" @click="doShip">确认发货</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 管理员介入弹窗 -->
+      <div v-if="showEscalateDialog" class="modal-overlay" @click.self="showEscalateDialog = false">
+        <div class="modal-card">
+          <h4>申请管理员介入</h4>
+          <p class="modal-desc">将提交给管理员进行仲裁处理</p>
+          <div class="form-group">
+            <label>申请理由 *</label>
+            <textarea v-model="escalateReason" rows="3" maxlength="500" placeholder="请描述纠纷原因..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="showEscalateDialog = false">取消</button>
+            <button class="btn-primary" :disabled="!escalateReason.trim()" @click="submitEscalate">提交</button>
           </div>
         </div>
       </div>
@@ -115,6 +160,9 @@ const msgType = ref('success')
 const showShipDialog = ref(false)
 const showRefundDialog = ref(false)
 const refundReason = ref('')
+const showEscalateDialog = ref(false)
+const escalateReason = ref('')
+const orderLogs = ref([])
 const showRating = ref(false)
 const confirmVisible = ref(false)
 const confirmMsg = ref('')
@@ -127,6 +175,9 @@ const user = userStr ? JSON.parse(userStr) : null
 const isBuyer = computed(() => user?.id === order.value?.buyerId)
 const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
+const sellerRejectedRefund = computed(() =>
+  orderLogs.value.some(log => log.actionType === 'REJECT_REFUND')
+)
 
 const fetchOrder = async () => {
   loading.value = true
@@ -134,11 +185,16 @@ const fetchOrder = async () => {
   try {
     const res = await orderAPI.getDetail(props.id)
     order.value = res.data
+    // 也加载操作日志用于判断卖家是否已拒绝退款
+    try {
+      const logRes = await orderAPI.getLogs(props.id)
+      orderLogs.value = logRes.data || []
+    } catch (e) { orderLogs.value = [] }
   } catch (e) {
-    // Try swap order
     try {
       const res = await swapAPI.getDetail(props.id)
       order.value = res.data
+      orderLogs.value = []
     } catch (e2) {
       error.value = e?.message || '加载失败'
     }
@@ -164,8 +220,29 @@ const doCancel = async () => {
 const requestCancel = async () => {
   try { await orderAPI.cancel(props.id, { reason: '买家申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
+const doCancelCancelRequest = async () => {
+  try { await orderAPI.rejectCancel(props.id); showMsg('已撤销取消申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const doAgreeCancel = async () => {
+  try { await orderAPI.agreeCancel(props.id); showMsg('已同意取消，订单已取消'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const doRejectCancel = async () => {
+  try { await orderAPI.rejectCancel(props.id); showMsg('已拒绝取消申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
 const doRefund = async () => {
   try { await orderAPI.refund(props.id, { reason: refundReason.value }); showRefundDialog.value = false; showMsg('退款申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const doAgreeRefund = async () => {
+  try { await orderAPI.agreeRefund(props.id); showMsg('已同意退款'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const doRejectRefund = async () => {
+  try { await orderAPI.rejectRefund(props.id); showMsg('已拒绝退款'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const submitEscalate = async () => {
+  try { await orderAPI.escalate(props.id, { reason: escalateReason.value }); showEscalateDialog.value = false; showMsg('已申请管理员介入'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
+const doCancelRefund = async () => {
+  try { await orderAPI.cancelRefund(props.id); showMsg('已取消退款申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const doRating = async () => {
   try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '操作失败', 'error') }
@@ -188,6 +265,10 @@ onMounted(fetchOrder)
 .action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid #d9d9d9; background: #fff; }
 .btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
 .btn-danger { color: #ff4d4f !important; border-color: #ff4d4f !important; }
+.refund-info { padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
+.dispute-info { background: #fff2f0; border-color: #ffccc7; color: #ff4d4f; }
+.refund-detail { font-size: 13px; color: #666; margin-bottom: 8px; }
+.modal-desc { font-size: 13px; color: #999; margin-bottom: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 420px; }
 .modal-card h4 { margin-bottom: 16px; }
