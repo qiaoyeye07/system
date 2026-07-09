@@ -21,6 +21,8 @@ public class MessageResponse {
     private Long productId;
     private String productTitle;
     private String content;
+    private String messageType;
+    private String attachmentUrl;
     private Boolean isRead;
     private LocalDateTime createdAt;
 }

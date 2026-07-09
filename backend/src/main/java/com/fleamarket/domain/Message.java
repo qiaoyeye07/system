@@ -34,6 +34,13 @@ public class Message {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "message_type", nullable = false, length = 10)
+    @Builder.Default
+    private String messageType = "TEXT";
+
+    @Column(name = "attachment_url", length = 500)
+    private String attachmentUrl;
+
     @Column(name = "is_read", nullable = false)
     @Builder.Default
     private Boolean isRead = false;

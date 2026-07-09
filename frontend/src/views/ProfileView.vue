@@ -17,13 +17,13 @@
       <div class="rating-section">
         <h3>收到的评价（{{ ratings.length }}）</h3>
         <div v-if="ratings.length" class="rating-list">
-          <div v-for="rating in ratings" :key="rating.id" class="rating-item">
+          <div v-for="rating in ratings" :key="rating.id" class="rating-item" @click="goToOrder(rating.orderId)" style="cursor:pointer">
             <div class="rating-header">
               <strong>{{ rating.raterName || '匿名用户' }}</strong>
               <span>{{ formatDate(rating.createdAt) }}</span>
             </div>
             <StarRating :model-value="rating.score" :show-text="true" readonly />
-            <div class="rating-order">订单：{{ rating.orderNo || '-' }}</div>
+            <div class="rating-order">订单：{{ rating.orderNo || '-' }} → 查看详情</div>
           </div>
         </div>
         <EmptyState v-else text="暂无评价" />
@@ -69,6 +69,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { userAPI, reportAPI } from '../api/modules.js'
 import { useUserStore } from '../store/user.js'
 import ProductCard from '../components/common/ProductCard.vue'
@@ -78,6 +79,7 @@ import EmptyState from '../components/common/EmptyState.vue'
 import StarRating from '../components/common/StarRating.vue'
 
 const props = defineProps({ id: [String, Number] })
+const router = useRouter()
 const store = useUserStore()
 const profile = ref(null)
 const activeProducts = ref([])
@@ -116,6 +118,10 @@ const fetchProfile = async () => {
 const formatDate = (value) => {
   if (!value) return ''
   return String(value).replace('T', ' ').slice(0, 16)
+}
+
+const goToOrder = (orderId) => {
+  if (orderId) router.push(`/order/${orderId}`)
 }
 
 const submitReport = async () => {
