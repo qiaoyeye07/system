@@ -12,6 +12,7 @@ if not exist ".env" (
 for /f "usebackq eol=# tokens=1,2 delims==" %%a in (".env") do (
     if "%%a"=="DB_PASSWORD" set "DB_PASSWORD=%%b"
 )
+if not defined DB_PASSWORD set "DB_PASSWORD=WangQi1029."
 
 cls
 echo.
@@ -42,6 +43,13 @@ set "BACKEND_BAT=%TEMP%\fleamarket_backend.bat"
 > "%BACKEND_BAT%" echo @echo off
 >> "%BACKEND_BAT%" echo cd /d "%~dp0backend"
 >> "%BACKEND_BAT%" echo set "DB_PASSWORD=%DB_PASSWORD%"
+>> "%BACKEND_BAT%" echo :: Auto-detect JAVA_HOME
+>> "%BACKEND_BAT%" echo if not defined JAVA_HOME (
+>> "%BACKEND_BAT%" echo   for %%%%d in ^("D:\Program Files\Java\jdk-17" "C:\Program Files\Java\jdk-17"^) do ^(
+>> "%BACKEND_BAT%" echo     if exist "%%%%~d\bin\java.exe" set "JAVA_HOME=%%%%~d"
+>> "%BACKEND_BAT%" echo   ^)
+>> "%BACKEND_BAT%" echo ^)
+>> "%BACKEND_BAT%" echo if defined JAVA_HOME set "PATH=%%JAVA_HOME%%\bin;%%PATH%%"
 >> "%BACKEND_BAT%" echo mvnw.cmd spring-boot:run -DskipTests
 >> "%BACKEND_BAT%" echo pause
 start "Backend-8081" "%BACKEND_BAT%"
