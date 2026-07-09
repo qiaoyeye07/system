@@ -7,6 +7,8 @@ import com.fleamarket.domain.enums.ReportTargetType;
 import com.fleamarket.dto.response.ReportResponse;
 import com.fleamarket.exception.BusinessException;
 import com.fleamarket.exception.ErrorCode;
+import com.fleamarket.repository.MessageRepository;
+import com.fleamarket.repository.ProductRepository;
 import com.fleamarket.repository.ReportRepository;
 import com.fleamarket.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ public class ReportService {
 
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final MessageRepository messageRepository;
 
     @Transactional
     public ReportResponse createReport(Long reporterId, ReportTargetType targetType,
@@ -159,12 +163,14 @@ public class ReportService {
     }
 
     public ReportResponse toResponse(Report report) {
+        String targetSummary = resolveTargetSummary(report.getTargetType(), report.getTargetId());
         return ReportResponse.builder()
                 .id(report.getId())
                 .reporterId(report.getReporter().getId())
                 .reporterName(report.getReporter().getUsername())
                 .targetType(report.getTargetType().name())
                 .targetId(report.getTargetId())
+                .targetSummary(targetSummary)
                 .reason(report.getReason())
                 .description(report.getDescription())
                 .status(report.getStatus().name())
@@ -174,5 +180,25 @@ public class ReportService {
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
                 .build();
+    }
+
+    private String resolveTargetSummary(ReportTargetType targetType, Long targetId) {
+        try {
+            if (targetType == ReportTargetType.USER) {
+                return userRepository.findById(targetId)
+                        .map(u -> "用户：" + u.getUsername())
+                        .orElse("用户 #" + targetId + "（已删除）");
+            } else if (targetType == ReportTargetType.PRODUCT) {
+                return productRepository.findById(targetId)
+                        .map(p -> "商品：「" + p.getTitle() + "」")
+                        .orElse("商品 #" + targetId + "（已下架或删除）");
+            } else {
+                return messageRepository.findById(targetId)
+                        .map(m -> "消息：「" + (m.getContent().length() > 50 ? m.getContent().substring(0, 50) + "…" : m.getContent()) + "」")
+                        .orElse("消息 #" + targetId + "（已删除）");
+            }
+        } catch (Exception e) {
+            return targetType.name() + " #" + targetId;
+        }
     }
 }
