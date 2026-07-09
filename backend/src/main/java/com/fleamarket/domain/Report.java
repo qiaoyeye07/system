@@ -53,6 +53,10 @@ public class Report {
     @Column(name = "appeal_result", length = 20)
     private String appealResult;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pre_appeal_status", length = 20)
+    private ReportStatus preAppealStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

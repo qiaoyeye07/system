@@ -87,7 +87,7 @@ public class AdminController {
 
     @GetMapping("/reports")
     public ApiResponse<Page<ReportResponse>> listReports(
-            @RequestParam(defaultValue = "PENDING") String status,
+            @RequestParam(defaultValue = "ALL") String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);

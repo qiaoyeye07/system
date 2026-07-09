@@ -17,6 +17,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Page<Report> findByStatus(ReportStatus status, Pageable pageable);
 
+    Page<Report> findByStatusOrderByCreatedAtDesc(ReportStatus status, Pageable pageable);
+
+    Page<Report> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     List<Report> findByReporterIdAndTargetTypeAndTargetIdAndStatusIn(
             Long reporterId, ReportTargetType targetType, Long targetId, List<ReportStatus> statuses);
 

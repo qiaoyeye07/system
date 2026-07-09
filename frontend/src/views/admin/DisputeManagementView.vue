@@ -4,12 +4,12 @@
     <LoadingState v-if="loading" />
     <EmptyState v-else-if="disputes.length === 0" text="暂无待处理纠纷" />
     <div v-else class="dispute-list">
-      <div v-for="d in disputes" :key="d.orderId" class="dispute-card">
+      <div v-for="d in disputes" :key="d.id" class="dispute-card">
         <div class="dispute-header">
           <span>{{ d.orderNo }}</span>
           <span>{{ d.buyerName }} / {{ d.sellerName }}</span>
           <span>¥{{ d.amount?.toFixed(2) }}</span>
-          <span>{{ d.createdAt }}</span>
+          <span>{{ d.createdAt?.slice(0,10) }}</span>
         </div>
         <p>退款原因：{{ d.refundReason }}</p>
         <button @click="viewDetail(d)">查看详情并裁定</button>
@@ -21,14 +21,14 @@
       <div class="modal-card" style="width:600px">
         <h4>纠纷详情 — {{ currentDispute?.orderNo }}</h4>
         <div v-if="disputeDetail">
-          <p>买家：{{ disputeDetail.buyer?.username }} | 卖家：{{ disputeDetail.seller?.username }}</p>
-          <p>商品：{{ disputeDetail.product?.title }} | 金额：¥{{ disputeDetail.amount?.toFixed(2) }}</p>
+          <p>买家：{{ disputeDetail.buyerName }} | 卖家：{{ disputeDetail.sellerName }}</p>
+          <p>商品：{{ disputeDetail.productTitle }} | 金额：¥{{ disputeDetail.amount?.toFixed(2) }}</p>
           <p>退款原因：{{ disputeDetail.refundReason }}</p>
           <div class="form-group" style="margin-top:16px">
             <label>裁定 *</label>
             <div class="radio-group">
-              <label><input type="radio" v-model="decision" value="REFUND" /> 同意退款（取消订单，商品恢复在售）</label>
-              <label><input type="radio" v-model="decision" value="MAINTAIN" /> 维持原状（交易完成）</label>
+              <label><input type="radio" v-model="decision" value="APPROVE_REFUND" /> 同意退款（取消订单，商品恢复在售）</label>
+              <label><input type="radio" v-model="decision" value="MAINTAIN_STATUS" /> 维持原状（交易完成）</label>
             </div>
           </div>
           <div class="form-group">
@@ -56,7 +56,7 @@ const loading = ref(false)
 const detailVisible = ref(false)
 const currentDispute = ref(null)
 const disputeDetail = ref(null)
-const decision = ref('REFUND')
+const decision = ref('APPROVE_REFUND')
 const judgeReason = ref('')
 
 const fetchDisputes = async () => {
@@ -66,7 +66,7 @@ const fetchDisputes = async () => {
 const viewDetail = async (d) => {
   currentDispute.value = d
   try {
-    const res = await adminAPI.getDisputeDetail(d.orderId)
+    const res = await adminAPI.getOrderDetail(d.id)
     disputeDetail.value = res.data
     detailVisible.value = true
   } catch (e) { alert('加载失败') }
@@ -74,7 +74,7 @@ const viewDetail = async (d) => {
 const submitJudge = async () => {
   if (!judgeReason.value.trim()) { alert('请填写裁定理由'); return }
   try {
-    await adminAPI.judgeDispute(currentDispute.value.orderId, { decision: decision.value, reason: judgeReason.value })
+    await adminAPI.judgeDispute(currentDispute.value.id, { action: decision.value, reason: judgeReason.value })
     detailVisible.value = false; judgeReason.value = ''
     fetchDisputes()
   } catch (e) { alert(e?.message || '操作失败') }

@@ -32,7 +32,7 @@ const fetchUsers = async () => {
 }
 const toggleStatus = async (u) => {
   if (!confirm(u.enabled ? '禁用后用户不能登录或继续操作，历史数据将保留。确认禁用吗？' : '确认启用该用户吗？')) return
-  try { await adminAPI.toggleUserStatus(u.id, { enabled: !u.enabled }); fetchUsers() } catch (e) { alert(e?.message || '操作失败') }
+  try { await adminAPI.toggleUserStatus(u.id, !u.enabled); fetchUsers() } catch (e) { alert(e?.message || '操作失败') }
 }
 
 onMounted(fetchUsers)

@@ -9,20 +9,67 @@
     <div v-else class="report-list">
       <div v-for="r in reports" :key="r.id" class="report-item" @click="selectedReport = r">
         <span class="target-type">{{ targetTypeMap[r.targetType] || r.targetType }}</span>
-        <span class="target-summary">{{ r.targetSummary }}</span>
-        <span class="reason">{{ r.reason }}</span>
+        <span class="target-id">ID: {{ r.targetId }}</span>
+        <span class="reason">{{ reasonMap[r.reason] || r.reason }}</span>
         <OrderStatusTag :status="r.status" />
         <span class="time">{{ r.createdAt?.slice(0, 10) }}</span>
-        <button v-if="r.status === 'ACCEPTED'" class="btn-appeal" @click.stop="showAppeal(r)">申诉</button>
+        <button v-if="r.status === 'ACCEPTED' || r.status === 'REJECTED'" class="btn-appeal" @click.stop="showAppeal(r)">申诉</button>
+      </div>
+    </div>
+    <!-- 举报详情弹窗 -->
+    <div v-if="selectedReport" class="modal-overlay" @click.self="selectedReport = null">
+      <div class="modal-card">
+        <h4>举报详情 #{{ selectedReport.id }}</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">状态</span>
+            <OrderStatusTag :status="selectedReport.status" />
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">举报对象</span>
+            <span>[{{ targetTypeMap[selectedReport.targetType] || selectedReport.targetType }}] ID:{{ selectedReport.targetId }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">举报原因</span>
+            <span>{{ reasonMap[selectedReport.reason] || selectedReport.reason }}</span>
+          </div>
+          <div class="detail-item" v-if="selectedReport.description">
+            <span class="detail-label">详细描述</span>
+            <span>{{ selectedReport.description }}</span>
+          </div>
+          <div class="detail-item" v-if="selectedReport.adminNote">
+            <span class="detail-label">处理备注</span>
+            <span>{{ selectedReport.adminNote }}</span>
+          </div>
+          <div class="detail-item" v-if="selectedReport.appealReason">
+            <span class="detail-label">我的申诉理由</span>
+            <span>{{ selectedReport.appealReason }}</span>
+          </div>
+          <div class="detail-item" v-if="selectedReport.appealResult">
+            <span class="detail-label">申诉结果</span>
+            <span :class="selectedReport.appealResult === 'OVERTURNED' ? 'text-green' : 'text-red'">
+              {{ selectedReport.appealResult === 'UPHELD' ? '维持原判' : '改判' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">提交时间</span>
+            <span>{{ selectedReport.createdAt?.slice(0, 16) }}</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="selectedReport = null">关闭</button>
+          <button v-if="selectedReport.status === 'ACCEPTED' || selectedReport.status === 'REJECTED'" class="btn-primary" @click="showAppeal(selectedReport); selectedReport = null">申诉</button>
+        </div>
       </div>
     </div>
     <!-- 申诉弹窗 -->
     <div v-if="appealVisible" class="modal-overlay" @click.self="appealVisible = false">
       <div class="modal-card">
         <h4>提交申诉</h4>
+        <p class="appeal-context">对「{{ reasonMap[appealReport?.reason] || appealReport?.reason }}」的{{ appealReport?.status === 'ACCEPTED' ? '受理' : '驳回' }}决定进行申诉</p>
         <div class="form-group">
           <label>申诉理由 *</label>
-          <textarea v-model="appealReason" rows="3" maxlength="500" placeholder="说明申诉理由"></textarea>
+          <textarea v-model="appealReason" rows="4" maxlength="500" placeholder="请说明不服处理决定的理由"></textarea>
         </div>
         <div class="modal-actions">
           <button class="btn-cancel" @click="appealVisible = false">取消</button>
@@ -42,28 +89,35 @@ import OrderStatusTag from '../components/common/OrderStatusTag.vue'
 
 const reports = ref([])
 const loading = ref(false)
+const selectedReport = ref(null)
 const status = ref('ALL')
 const appealVisible = ref(false)
 const appealReportId = ref(null)
+const appealReport = ref(null)
 const appealReason = ref('')
 
 const statuses = [
   { value: 'ALL', label: '全部' }, { value: 'PENDING', label: '待处理' },
-  { value: 'ACCEPTED', label: '已受理' }, { value: 'REJECTED', label: '已驳回' }
+  { value: 'ACCEPTED', label: '已受理' },
+  { value: 'REJECTED', label: '已驳回' }, { value: 'APPEALING', label: '申诉中' }
 ]
 const targetTypeMap = { PRODUCT: '商品', USER: '用户', MESSAGE: '消息' }
+const reasonMap = { FAKE_DESC: '描述不符', PROHIBITED: '违禁品', FRAUD: '诈骗', HARASS: '骚扰', OTHER: '其他' }
 
 const fetchReports = async () => {
   loading.value = true
   try {
-    const params = {}
-    if (status.value !== 'ALL') params.status = status.value
-    const res = await reportAPI.getMyReports(params)
-    reports.value = res.data?.content || []
+    const res = await reportAPI.getMyReports({ page: 0, size: 100 })
+    const allReports = res.data?.content || []
+    if (status.value === 'ALL') {
+      reports.value = allReports
+    } else {
+      reports.value = allReports.filter(r => r.status === status.value)
+    }
   } catch (e) {} finally { loading.value = false }
 }
 
-const showAppeal = (r) => { appealReportId.value = r.id; appealReason.value = ''; appealVisible.value = true }
+const showAppeal = (r) => { appealReportId.value = r.id; appealReport.value = r; appealReason.value = ''; appealVisible.value = true }
 const submitAppeal = async () => {
   if (!appealReason.value.trim()) { alert('请填写申诉理由'); return }
   try {
@@ -85,7 +139,7 @@ onMounted(fetchReports)
 .report-item { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: #fff; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
 .report-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .target-type { color: #1890ff; font-weight: 500; min-width: 40px; }
-.target-summary { flex: 1; }
+.target-id { flex: 1; color: #999; font-size: 13px; }
 .reason { color: #666; }
 .time { color: #999; font-size: 12px; }
 .btn-appeal { padding: 4px 12px; border: 1px solid #1890ff; color: #1890ff; background: #fff; border-radius: 4px; font-size: 12px; }
@@ -98,4 +152,10 @@ onMounted(fetchReports)
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
 .btn-primary { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.detail-grid { margin-bottom: 16px; }
+.detail-item { display: flex; gap: 12px; margin-bottom: 10px; font-size: 14px; }
+.detail-label { color: #999; min-width: 70px; flex-shrink: 0; }
+.text-green { color: #52c41a; font-weight: 500; }
+.text-red { color: #ff4d4f; font-weight: 500; }
+.appeal-context { font-size: 13px; color: #999; margin-bottom: 16px; background: #fafafa; padding: 8px 12px; border-radius: 4px; }
 </style>

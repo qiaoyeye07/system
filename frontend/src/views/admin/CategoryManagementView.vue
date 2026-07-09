@@ -53,7 +53,7 @@ const handleEdit = async () => {
   try { await categoryAPI.update(editingCat.value.id, { name: editName.value }); editingCat.value = null; fetchAll() } catch (e) { alert(e?.message || '编辑失败') }
 }
 const toggleStatus = async (c) => {
-  try { await categoryAPI.toggleStatus(c.id, { enabled: !c.enabled }); fetchAll() } catch (e) { alert(e?.message || '操作失败') }
+  try { await categoryAPI.toggleStatus(c.id); fetchAll() } catch (e) { alert(e?.message || '操作失败') }
 }
 
 onMounted(fetchAll)

@@ -194,15 +194,19 @@ public class OrderService {
         }
 
         if ("APPROVE_REFUND".equals(action)) {
-            return cancelOrder(order, null, "管理员裁定退款：" + reason);
+            return cancelOrder(order, getSystemUser(), "管理员裁定退款：" + reason);
         } else {
             order.setStatus("RECEIVED");
             order.setRefundReason(null);
             orderRepository.save(order);
-            createLog(order, null, ActionType.ADMIN_JUDGE, "DISPUTE", "RECEIVED",
+            createLog(order, getSystemUser(), ActionType.ADMIN_JUDGE, "DISPUTE", "RECEIVED",
                     "管理员裁定维持原状：" + reason);
             return toResponse(order);
         }
+    }
+
+    private User getSystemUser() {
+        return userRepository.findById(1L).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "系统用户不存在"));
     }
 
     // ==================== 以物易物 ====================

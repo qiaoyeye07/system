@@ -11,8 +11,8 @@
       <div v-for="r in reports" :key="r.id" class="table-row" @click="viewDetail(r)">
         <span>#{{ r.id }}</span>
         <span>{{ r.reporterName || r.reporterId }}</span>
-        <span>[{{ targetTypeMap[r.targetType] }}] {{ r.targetSummary }}</span>
-        <span>{{ r.reason }}</span>
+        <span>[{{ targetTypeMap[r.targetType] }}] ID:{{ r.targetId }}</span>
+        <span>{{ reasonMap[r.reason] || r.reason }}</span>
         <OrderStatusTag :status="r.status" />
         <span>{{ r.createdAt?.slice(0, 10) }}</span>
       </div>
@@ -25,13 +25,13 @@
         <div v-if="currentReport">
           <p>举报人：{{ currentReport.reporterName }}</p>
           <p>对象类型：{{ targetTypeMap[currentReport.targetType] }}</p>
-          <p>对象：{{ currentReport.targetSummary }}</p>
+          <p>对象ID：{{ currentReport.targetId }}</p>
           <p>原因：{{ currentReport.reason }}</p>
           <p v-if="currentReport.description">描述：{{ currentReport.description }}</p>
           <p>状态：<OrderStatusTag :status="currentReport.status" /></p>
 
           <!-- 待处理操作 -->
-          <template v-if="currentReport.status === 'PENDING' || currentReport.status === 'PROCESSING'">
+          <template v-if="currentReport.status === 'PENDING'">
             <div class="form-group" style="margin-top:16px">
               <label>处理动作</label>
               <div class="radio-group">
@@ -83,7 +83,7 @@ import OrderStatusTag from '../../components/common/OrderStatusTag.vue'
 
 const reports = ref([])
 const loading = ref(false)
-const status = ref('PENDING')
+const status = ref('ALL')
 const detailVisible = ref(false)
 const currentReport = ref(null)
 const action = ref('accept')
@@ -91,11 +91,13 @@ const adminNote = ref('')
 const appealDecision = ref('UPHELD')
 
 const statuses = [
-  { value: 'PENDING', label: '待处理' }, { value: 'PROCESSING', label: '处理中' },
+  { value: 'ALL', label: '全部' },
+  { value: 'PENDING', label: '待处理' },
   { value: 'ACCEPTED', label: '已受理' }, { value: 'REJECTED', label: '已驳回' },
   { value: 'APPEALING', label: '申诉中' }
 ]
 const targetTypeMap = { PRODUCT: '商品', USER: '用户', MESSAGE: '消息' }
+const reasonMap = { FAKE_DESC: '描述不符', PROHIBITED: '违禁品', FRAUD: '诈骗', HARASS: '骚扰', OTHER: '其他' }
 
 const fetchReports = async () => {
   loading.value = true
@@ -107,18 +109,14 @@ const viewDetail = (r) => {
 const handleReport = async () => {
   if (!adminNote.value.trim()) { alert('请填写处理备注'); return }
   try {
-    if (action.value === 'accept') {
-      const act = currentReport.value.targetType === 'PRODUCT' ? 'OFF_PRODUCT' : currentReport.value.targetType === 'USER' ? 'DISABLE_USER' : 'WARN'
-      await adminAPI.acceptReport(currentReport.value.id, { action: act, note: adminNote.value })
-    } else {
-      await adminAPI.rejectReport(currentReport.value.id, { note: adminNote.value })
-    }
+    const act = action.value === 'accept' ? 'ACCEPTED' : 'REJECTED'
+    await adminAPI.handleReport(currentReport.value.id, { action: act, adminNote: adminNote.value })
     detailVisible.value = false; fetchReports()
   } catch (e) { alert(e?.message || '操作失败') }
 }
 const handleAppeal = async () => {
   if (!adminNote.value.trim()) { alert('请填写审查备注'); return }
-  try { await adminAPI.reviewAppeal(currentReport.value.id, { decision: appealDecision.value, note: adminNote.value }); detailVisible.value = false; fetchReports() } catch (e) { alert(e?.message || '操作失败') }
+  try { await adminAPI.handleAppeal(currentReport.value.id, appealDecision.value); detailVisible.value = false; fetchReports() } catch (e) { alert(e?.message || '操作失败') }
 }
 
 onMounted(fetchReports)

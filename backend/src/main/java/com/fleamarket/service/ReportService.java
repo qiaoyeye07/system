@@ -34,7 +34,7 @@ public class ReportService {
         List<Report> existingReports = reportRepository
                 .findByReporterIdAndTargetTypeAndTargetIdAndStatusIn(
                         reporterId, targetType, targetId,
-                        List.of(ReportStatus.PENDING, ReportStatus.PROCESSING));
+                        List.of(ReportStatus.PENDING));
 
         if (!existingReports.isEmpty()) {
             throw new BusinessException(ErrorCode.DUPLICATE_REPORT);
@@ -73,8 +73,11 @@ public class ReportService {
     }
 
     public Page<ReportResponse> listByStatus(String status, Pageable pageable) {
+        if ("ALL".equalsIgnoreCase(status)) {
+            return reportRepository.findAllByOrderByCreatedAtDesc(pageable).map(this::toResponse);
+        }
         ReportStatus reportStatus = ReportStatus.valueOf(status.toUpperCase());
-        return reportRepository.findByStatus(reportStatus, pageable).map(this::toResponse);
+        return reportRepository.findByStatusOrderByCreatedAtDesc(reportStatus, pageable).map(this::toResponse);
     }
 
     @Transactional
@@ -82,7 +85,7 @@ public class ReportService {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REPORT_NOT_FOUND));
 
-        if (report.getStatus() != ReportStatus.PENDING && report.getStatus() != ReportStatus.PROCESSING) {
+        if (report.getStatus() != ReportStatus.PENDING) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "该举报已被处理");
         }
 
@@ -117,6 +120,7 @@ public class ReportService {
             throw new BusinessException(ErrorCode.ALREADY_APPEALED);
         }
 
+        report.setPreAppealStatus(report.getStatus());
         report.setStatus(ReportStatus.APPEALING);
         report.setAppealReason(appealReason);
         reportRepository.save(report);
@@ -134,18 +138,18 @@ public class ReportService {
         }
 
         if ("UPHELD".equals(appealResult)) {
-            // 维持原判，把状态改回受理/驳回
+            // 维持原判：恢复到申诉前的状态，清除申诉信息，允许再次申诉
             report.setAppealResult("UPHELD");
+            report.setStatus(report.getPreAppealStatus() != null
+                    ? report.getPreAppealStatus() : ReportStatus.ACCEPTED);
+            report.setAppealReason(null);
+            report.setPreAppealStatus(null);
         } else if ("OVERTURNED".equals(appealResult)) {
-            // 改判
+            // 改判：反转原处理结果
             report.setAppealResult("OVERTURNED");
-            report.setStatus(report.getStatus() == ReportStatus.APPEALING
-                    ? (report.getAppealReason() != null ? ReportStatus.REJECTED : ReportStatus.ACCEPTED)
-                    : report.getStatus());
-            // 反转处理结果
-            if (report.getAppealReason() != null) {
-                report.setStatus(ReportStatus.REJECTED);
-            }
+            boolean wasAccepted = report.getPreAppealStatus() == ReportStatus.ACCEPTED;
+            report.setStatus(wasAccepted ? ReportStatus.REJECTED : ReportStatus.ACCEPTED);
+            report.setAdminNote(null); // 清除原处理备注
         } else {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "无效的申诉结果，可选 UPHELD 或 OVERTURNED");
         }

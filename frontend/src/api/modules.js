@@ -78,7 +78,7 @@ export const ratingAPI = {
 // 举报
 export const reportAPI = {
   submit: (data) => api.post('/reports', data),
-  getMyReports: (params) => api.get('/reports/my', { params }),
+  getMyReports: (params) => api.get('/my/reports', { params }),
   getDetail: (id) => api.get(`/reports/${id}`),
   appeal: (id, data) => api.post(`/reports/${id}/appeal`, data)
 }
@@ -86,14 +86,14 @@ export const reportAPI = {
 // 管理端
 export const adminAPI = {
   getUsers: (params) => api.get('/admin/users', { params }),
-  toggleUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
+  toggleUserStatus: (id, enabled) => api.put(`/admin/users/${id}/toggle-enabled`, null, { params: { enabled } }),
   getAllOrders: (params) => api.get('/admin/orders', { params }),
   getDisputes: (params) => api.get('/admin/disputes', { params }),
-  getDisputeDetail: (id) => api.get(`/admin/disputes/${id}`),
-  judgeDispute: (id, data) => api.post(`/admin/disputes/${id}/judge`, data),
+  getOrderDetail: (id) => api.get(`/admin/orders/${id}`),
+  judgeDispute: (id, data) => api.put(`/admin/disputes/${id}/judge`, data),
   getReports: (params) => api.get('/admin/reports', { params }),
-  acceptReport: (id, data) => api.post(`/admin/reports/${id}/accept`, data),
-  rejectReport: (id, data) => api.post(`/admin/reports/${id}/reject`, data),
-  reviewAppeal: (id, data) => api.post(`/admin/reports/${id}/review-appeal`, data),
+  getReportDetail: (id) => api.get(`/admin/reports/${id}`),
+  handleReport: (id, data) => api.put(`/admin/reports/${id}/handle`, data),
+  handleAppeal: (id, appealResult) => api.put(`/admin/reports/${id}/handle-appeal`, null, { params: { appealResult } }),
   offProduct: (id, params) => api.put(`/admin/products/${id}/off`, null, { params })
 }
