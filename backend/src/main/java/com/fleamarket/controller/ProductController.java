@@ -93,7 +93,7 @@ public class ProductController {
         return ApiResponse.success("商品发布成功，当前状态为在售", product);
     }
 
-    @PutMapping("/products/{id}/off")
+    @PatchMapping("/products/{id}/off")
     public ApiResponse<ProductResponse> offProduct(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         ProductResponse product = productService.offProduct(userId, id);

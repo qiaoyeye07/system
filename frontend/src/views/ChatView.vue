@@ -101,10 +101,24 @@ const fetchContacts = async () => {
     const res = await chatAPI.getContacts()
     contacts.value = res.data || []
     const contactId = route.query.contactId || route.params.contactId
-    if (contactId && contacts.value.length > 0) {
+    if (contactId) {
+      const targetId = Number(contactId)
       const productId = route.query.productId ? Number(route.query.productId) : null
-      const c = contacts.value.find(item => Number(item.contactId) === Number(contactId) && sameProduct(item.productId, productId))
-      if (c) openChat(c.contactId, c.productId)
+      let c = contacts.value.find(item => Number(item.contactId) === targetId && sameProduct(item.productId, productId))
+      // If no existing conversation, create a placeholder so chat can start immediately
+      if (!c) {
+        c = {
+          contactId: targetId,
+          contactName: route.query.contactName || `用户${targetId}`,
+          productId: productId || undefined,
+          productTitle: '',
+          lastMessage: '',
+          lastMessageTime: null,
+          unreadCount: 0
+        }
+        contacts.value.unshift(c)
+      }
+      openChat(c.contactId, c.productId)
     }
   } catch (e) {
     contacts.value = []

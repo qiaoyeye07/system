@@ -17,7 +17,8 @@
           <p class="price">¥{{ product.price?.toFixed(2) }}</p>
           <div class="info-grid">
             <span>成色：{{ conditionMap[product.condition] }}</span>
-            <span>交易方式：{{ tradeTypeMap[product.tradeType] }}</span>
+            <span>交易方式：{{ tradeTypeMap[product.tradeType] || product.tradeType }}</span>
+            <span>交易模式：{{ tradeModeMap[product.tradeMode] || product.tradeMode }}</span>
             <span>所在地：{{ product.location }}</span>
             <span>分类：{{ product.categoryName }}</span>
             <span>发布时间：{{ product.createdAt }}</span>
@@ -115,7 +116,8 @@ const adminOffReason = ref('')
 const reportForm = ref({ reason: '', description: '' })
 
 const conditionMap = { NEW: '全新', LIKE_NEW: '几乎全新', USED: '有使用痕迹' }
-const tradeTypeMap = { PICKUP: '自提', EXPRESS: '快递', BOTH: '两者均可' }
+const tradeTypeMap = { PICKUP: '自提', EXPRESS: '快递', BOTH: '自提 / 快递' }
+const tradeModeMap = { SELL: '仅出售', SWAP: '仅交换', BOTH: '出售 / 交换' }
 
 const userStr = localStorage.getItem('user')
 const currentUser = userStr ? JSON.parse(userStr) : null
