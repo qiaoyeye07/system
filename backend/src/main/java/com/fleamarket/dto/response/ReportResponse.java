@@ -18,6 +18,7 @@ public class ReportResponse {
     private String reporterName;
     private String targetType;
     private Long targetId;
+    private String targetSummary;
     private String reason;
     private String description;
     private String status;

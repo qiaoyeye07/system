@@ -11,7 +11,7 @@
       <div v-for="r in reports" :key="r.id" class="table-row" @click="viewDetail(r)">
         <span>#{{ r.id }}</span>
         <span>{{ r.reporterName || r.reporterId }}</span>
-        <span>[{{ targetTypeMap[r.targetType] }}] ID:{{ r.targetId }}</span>
+        <span>{{ r.targetSummary || '[' + targetTypeMap[r.targetType] + '] ID:' + r.targetId }}</span>
         <span>{{ reasonMap[r.reason] || r.reason }}</span>
         <OrderStatusTag :status="r.status" />
         <span>{{ r.createdAt?.slice(0, 10) }}</span>
@@ -25,7 +25,7 @@
         <div v-if="currentReport">
           <p>举报人：{{ currentReport.reporterName }}</p>
           <p>对象类型：{{ targetTypeMap[currentReport.targetType] }}</p>
-          <p>对象ID：{{ currentReport.targetId }}</p>
+          <p>对象：{{ currentReport.targetSummary || '[' + targetTypeMap[currentReport.targetType] + '] ID:' + currentReport.targetId }}</p>
           <p>原因：{{ currentReport.reason }}</p>
           <p v-if="currentReport.description">描述：{{ currentReport.description }}</p>
           <p>状态：<OrderStatusTag :status="currentReport.status" /></p>

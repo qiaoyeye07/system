@@ -9,7 +9,7 @@
     <div v-else class="report-list">
       <div v-for="r in reports" :key="r.id" class="report-item" @click="selectedReport = r">
         <span class="target-type">{{ targetTypeMap[r.targetType] || r.targetType }}</span>
-        <span class="target-id">ID: {{ r.targetId }}</span>
+        <span class="target-summary">{{ r.targetSummary || '[' + targetTypeMap[r.targetType] + '] ID:' + r.targetId }}</span>
         <span class="reason">{{ reasonMap[r.reason] || r.reason }}</span>
         <OrderStatusTag :status="r.status" />
         <span class="time">{{ r.createdAt?.slice(0, 10) }}</span>
@@ -27,7 +27,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">举报对象</span>
-            <span>[{{ targetTypeMap[selectedReport.targetType] || selectedReport.targetType }}] ID:{{ selectedReport.targetId }}</span>
+            <span>{{ selectedReport.targetSummary || '[' + targetTypeMap[selectedReport.targetType] + '] ID:' + selectedReport.targetId }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">举报原因</span>
@@ -139,7 +139,7 @@ onMounted(fetchReports)
 .report-item { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: #fff; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
 .report-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .target-type { color: #1890ff; font-weight: 500; min-width: 40px; }
-.target-id { flex: 1; color: #999; font-size: 13px; }
+.target-summary { flex: 1; color: #333; font-size: 13px; }
 .reason { color: #666; }
 .time { color: #999; font-size: 12px; }
 .btn-appeal { padding: 4px 12px; border: 1px solid #1890ff; color: #1890ff; background: #fff; border-radius: 4px; font-size: 12px; }
