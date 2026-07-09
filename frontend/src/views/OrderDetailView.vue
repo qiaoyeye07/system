@@ -31,18 +31,26 @@
             <button class="btn-danger" @click="confirmCancel">取消订单</button>
           </template>
           <template v-if="order.status === 'PAID' && isBuyer && !order.cancelReason">
-            <button @click="requestCancel">申请取消</button>
+            <button @click="showCancelDialog = true">申请取消</button>
           </template>
-          <template v-if="order.status === 'PAID' && isBuyer && order.cancelReason">
+          <template v-if="order.status === 'PAID' && isBuyer && order.cancelReason && !sellerRejectedRefund">
             <p class="refund-info">取消申请中：{{ order.cancelReason }}</p>
             <button @click="doCancelCancelRequest">撤销取消申请</button>
           </template>
-          <template v-if="order.status === 'PAID' && isSeller && order.cancelReason">
+          <template v-if="order.status === 'PAID' && isBuyer && order.cancelReason && sellerRejectedRefund">
+            <p class="refund-info dispute-info">卖家已拒绝取消：{{ order.cancelReason }}</p>
+            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
+          </template>
+          <template v-if="order.status === 'PAID' && isSeller && order.cancelReason && !sellerRejectedRefund">
             <p class="refund-info">买家申请取消：{{ order.cancelReason }}</p>
             <button class="btn-primary" @click="doAgreeCancel">同意取消</button>
             <button class="btn-danger" @click="doRejectCancel">拒绝取消</button>
           </template>
-          <template v-if="order.status === 'PAID' && isSeller">
+          <template v-if="order.status === 'PAID' && isSeller && order.cancelReason && sellerRejectedRefund">
+            <p class="refund-info dispute-info">已拒绝取消申请，等待买家处理</p>
+            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
+          </template>
+          <template v-if="order.status === 'PAID' && isSeller && !order.cancelReason">
             <button class="btn-primary" @click="showShipDialog = true">确认发货</button>
             <button class="btn-danger" @click="confirmCancel">取消订单</button>
           </template>
@@ -60,10 +68,14 @@
             <p class="refund-info dispute-info">卖家已拒绝退款：{{ order.refundReason }}</p>
             <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
           </template>
-          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason">
+          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason && !sellerRejectedRefund">
             <p class="refund-info">买家申请退款：{{ order.refundReason }}</p>
             <button class="btn-primary" @click="doAgreeRefund">同意退款</button>
             <button class="btn-danger" @click="doRejectRefund">拒绝退款</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason && sellerRejectedRefund">
+            <p class="refund-info dispute-info">已拒绝退款申请，等待买家处理</p>
+            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
           </template>
           <template v-if="order.status === 'DISPUTE' && isBuyer">
             <p class="refund-info dispute-info">已提交管理员仲裁，请等待处理</p>
@@ -89,6 +101,31 @@
           <div class="modal-actions">
             <button class="btn-cancel" @click="showRefundDialog = false">取消</button>
             <button class="btn-primary" :disabled="!refundReason.trim()" @click="doRefund">提交申请</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 取消订单弹窗 -->
+      <div v-if="showCancelDialog" class="modal-overlay" @click.self="showCancelDialog = false">
+        <div class="modal-card">
+          <h4>申请取消订单</h4>
+          <div class="form-group">
+            <label>取消原因 *</label>
+            <div class="reason-options">
+              <label v-for="r in cancelReasons" :key="r" class="reason-option"
+                :class="{ selected: cancelReason === r }">
+                <input type="radio" v-model="cancelReason" :value="r" /> {{ r }}
+              </label>
+              <label class="reason-option" :class="{ selected: cancelReason === cancelCustom }">
+                <input type="radio" v-model="cancelReason" :value="cancelCustom" /> 其他
+              </label>
+            </div>
+            <input v-if="cancelReason === cancelCustom" v-model="cancelCustomText"
+              type="text" placeholder="请说明原因" class="custom-input" />
+          </div>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="showCancelDialog = false">返回</button>
+            <button class="btn-primary" :disabled="!cancelReason" @click="submitCancelRequest">提交</button>
           </div>
         </div>
       </div>
@@ -160,6 +197,11 @@ const msgType = ref('success')
 const showShipDialog = ref(false)
 const showRefundDialog = ref(false)
 const refundReason = ref('')
+const showCancelDialog = ref(false)
+const cancelReason = ref('')
+const cancelCustom = '其他原因'
+const cancelCustomText = ref('')
+const cancelReasons = ['不想要了', '拍错了', '卖家未及时发货', '商品信息有误', '与卖家协商一致']
 const showEscalateDialog = ref(false)
 const escalateReason = ref('')
 const orderLogs = ref([])
@@ -220,6 +262,10 @@ const doCancel = async () => {
 const requestCancel = async () => {
   try { await orderAPI.cancel(props.id, { reason: '买家申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
+const submitCancelRequest = async () => {
+  const reason = cancelReason.value === cancelCustom ? cancelCustomText.value : cancelReason.value
+  try { await orderAPI.cancel(props.id, { reason }); showCancelDialog.value = false; showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
 const doCancelCancelRequest = async () => {
   try { await orderAPI.rejectCancel(props.id); showMsg('已撤销取消申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
@@ -239,7 +285,14 @@ const doRejectRefund = async () => {
   try { await orderAPI.rejectRefund(props.id); showMsg('已拒绝退款'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const submitEscalate = async () => {
-  try { await orderAPI.escalate(props.id, { reason: escalateReason.value }); showEscalateDialog.value = false; showMsg('已申请管理员介入'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  try {
+    if (order.value.status === 'PAID') {
+      await orderAPI.escalateCancel(props.id, { reason: escalateReason.value })
+    } else {
+      await orderAPI.escalate(props.id, { reason: escalateReason.value })
+    }
+    showEscalateDialog.value = false; showMsg('已申请管理员介入'); fetchOrder()
+  } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const doCancelRefund = async () => {
   try { await orderAPI.cancelRefund(props.id); showMsg('已取消退款申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
@@ -268,6 +321,11 @@ onMounted(fetchOrder)
 .refund-info { padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
 .dispute-info { background: #fff2f0; border-color: #ffccc7; color: #ff4d4f; }
 .refund-detail { font-size: 13px; color: #666; margin-bottom: 8px; }
+.reason-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.reason-option { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.reason-option.selected { border-color: #1890ff; background: #e6f7ff; }
+.reason-option input { margin: 0; }
+.custom-input { margin-top: 8px; width: 100%; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 13px; }
 .modal-desc { font-size: 13px; color: #999; margin-bottom: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 420px; }

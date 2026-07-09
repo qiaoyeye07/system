@@ -86,6 +86,14 @@ public class OrderController {
         return ApiResponse.success("操作成功", order);
     }
 
+    @PostMapping("/orders/{id}/escalate-cancel")
+    public ApiResponse<OrderResponse> escalateCancel(@PathVariable Long id,
+                                                      @Valid @RequestBody RefundRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.escalateCancelToDispute(userId, id, request.getReason());
+        return ApiResponse.success("已申请管理员介入", order);
+    }
+
     @PostMapping("/orders/{id}/refund")
     public ApiResponse<OrderResponse> requestRefund(@PathVariable Long id,
                                                      @Valid @RequestBody RefundRequest request) {
