@@ -131,6 +131,13 @@ public class OrderController {
         return ApiResponse.success("已取消退款申请", order);
     }
 
+    @DeleteMapping("/orders/{id}")
+    public ApiResponse<Void> deleteOrder(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        orderService.deleteOrder(userId, id);
+        return ApiResponse.success("订单已删除", null);
+    }
+
     // ==================== 以物易物 ====================
 
     @PostMapping("/swap")
@@ -241,5 +248,12 @@ public class OrderController {
     public ApiResponse<OrderResponse> getSwapDetail(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.success(orderService.getOrderDetail(userId, id));
+    }
+
+    @DeleteMapping("/swap/{id}")
+    public ApiResponse<Void> deleteSwap(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        orderService.deleteOrder(userId, id);
+        return ApiResponse.success("交换订单已删除", null);
     }
 }

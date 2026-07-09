@@ -53,7 +53,8 @@ export const orderAPI = {
   rejectRefund: (id) => api.post(`/orders/${id}/refund/reject`),
   escalate: (id, data) => api.post(`/orders/${id}/escalate`, data),
   escalateCancel: (id, data) => api.post(`/orders/${id}/escalate-cancel`, data),
-  cancelRefund: (id) => api.post(`/orders/${id}/cancel-refund`)
+  cancelRefund: (id) => api.post(`/orders/${id}/cancel-refund`),
+  deleteOrder: (id) => api.delete(`/orders/${id}`)
 }
 
 // 交换
@@ -66,7 +67,8 @@ export const swapAPI = {
   ship: (id, data) => api.post(`/swap/${id}/ship`, data),
   receive: (id) => api.post(`/swap/${id}/receive`),
   getMySwaps: (params) => api.get('/swap', { params }),
-  getDetail: (id) => api.get(`/swap/${id}`)
+  getDetail: (id) => api.get(`/swap/${id}`),
+  deleteSwap: (id) => api.delete(`/swap/${id}`)
 }
 
 // 聊天

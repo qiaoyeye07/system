@@ -114,14 +114,10 @@ public class OrderService {
         if ("PENDING_PAY".equals(order.getStatus())) {
             return cancelOrder(order, order.getBuyer(), reason);
         } else if ("PAID".equals(order.getStatus())) {
-            // 申请取消
             order.setCancelReason(reason);
             orderRepository.save(order);
             createLog(order, order.getBuyer(), ActionType.CANCEL, order.getStatus(), order.getStatus(),
                     "买家申请取消：" + reason);
-            // 存入取消原因，供卖家查看
-            order.setCancelReason(reason);
-            orderRepository.save(order);
             return toResponse(order);
         } else {
             throw new BusinessException(ErrorCode.CANNOT_CANCEL_SHIPPED);
@@ -243,12 +239,18 @@ public class OrderService {
 
     @Transactional
     public OrderResponse escalateToDispute(Long userId, Long orderId, String reason) {
-        Order order = getOrder(orderId, userId, null);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        boolean isBuyer = order.getBuyer().getId().equals(userId);
+        boolean isSeller = order.getSeller().getId().equals(userId);
+        if (!isBuyer && !isSeller) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         if (!"RECEIVED".equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持申请管理员介入");
         }
 
-        boolean isBuyer = order.getBuyer().getId().equals(userId);
         String who = isBuyer ? "买家" : "卖家";
         order.setStatus("DISPUTE");
         order.setRefundReason(reason);
@@ -275,6 +277,25 @@ public class OrderService {
                 "买家取消退款申请");
 
         return toResponse(order);
+    }
+
+    @Transactional
+    public void deleteOrder(Long userId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyer().getId().equals(userId) && !order.getSeller().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        // 只允许删除已终止的订单
+        String status = order.getStatus();
+        if (!"CANCELLED".equals(status) && !"COMPLETED".equals(status) && !"REJECTED".equals(status)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "只能删除已完成、已取消或已拒绝的订单");
+        }
+
+        orderLogRepository.deleteAll(orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId));
+        orderRepository.delete(order);
     }
 
     @Transactional
@@ -416,6 +437,17 @@ public class OrderService {
         String oldStatus = order.getStatus();
         order.setStatus("CANCELLED");
         orderRepository.save(order);
+
+        // 恢复双方商品为在售
+        if (order.getProduct() != null && order.getProduct().getStatus() == ProductStatus.OFF) {
+            order.getProduct().setStatus(ProductStatus.ACTIVE);
+            productRepository.save(order.getProduct());
+        }
+        if (order.getSwapProduct() != null && order.getSwapProduct().getStatus() == ProductStatus.OFF) {
+            order.getSwapProduct().setStatus(ProductStatus.ACTIVE);
+            productRepository.save(order.getSwapProduct());
+        }
+
         createLog(order, null, ActionType.CANCEL, oldStatus, "CANCELLED",
                 "交换取消：" + (reason != null ? reason : ""));
     }

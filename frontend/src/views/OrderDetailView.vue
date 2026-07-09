@@ -87,6 +87,9 @@
           <template v-if="order.status === 'COMPLETED' && isParticipant">
             <button @click="showRating = true">评价对方</button>
           </template>
+          <template v-if="isDeletable">
+            <button class="btn-delete" @click="confirmDelete">删除订单</button>
+          </template>
         </div>
       </div>
 
@@ -181,6 +184,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { orderAPI, swapAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
@@ -189,6 +193,7 @@ import StarRating from '../components/common/StarRating.vue'
 import ConfirmDialog from '../components/common/ConfirmDialog.vue'
 
 const props = defineProps({ id: [String, Number] })
+const router = useRouter()
 const order = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -217,6 +222,9 @@ const user = userStr ? JSON.parse(userStr) : null
 const isBuyer = computed(() => user?.id === order.value?.buyerId)
 const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
+const isDeletable = computed(() =>
+  isParticipant.value && ['CANCELLED', 'COMPLETED'].includes(order.value?.status)
+)
 const sellerRejectedRefund = computed(() =>
   orderLogs.value.some(log => log.actionType === 'REJECT_REFUND')
 )
@@ -301,6 +309,17 @@ const doRating = async () => {
   try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const handleConfirm = () => { if (confirmAction.value) confirmAction.value() }
+const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除该订单？'; confirmAction.value = doDelete; confirmVisible.value = true }
+const doDelete = async () => {
+  try {
+    if (order.value?.orderType === 'SWAP') {
+      await swapAPI.deleteSwap(props.id)
+    } else {
+      await orderAPI.deleteOrder(props.id)
+    }
+    confirmVisible.value = false; showMsg('订单已删除'); setTimeout(() => router.push('/orders'), 1500)
+  } catch (e) { showMsg(e?.message || '删除失败', 'error') }
+}
 
 onMounted(fetchOrder)
 </script>
@@ -318,6 +337,7 @@ onMounted(fetchOrder)
 .action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid #d9d9d9; background: #fff; }
 .btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
 .btn-danger { color: #ff4d4f !important; border-color: #ff4d4f !important; }
+.btn-delete { color: #999 !important; border-color: #d9d9d9 !important; font-size: 12px !important; padding: 4px 12px !important; }
 .refund-info { padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
 .dispute-info { background: #fff2f0; border-color: #ffccc7; color: #ff4d4f; }
 .refund-detail { font-size: 13px; color: #666; margin-bottom: 8px; }

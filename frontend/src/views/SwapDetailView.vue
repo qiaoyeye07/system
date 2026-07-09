@@ -49,6 +49,9 @@
           <template v-if="order.status === 'COMPLETED' && isParticipant">
             <button @click="showRating = true">评价对方</button>
           </template>
+          <template v-if="isDeletable">
+            <button class="btn-delete" @click="confirmDelete">删除订单</button>
+          </template>
         </div>
       </div>
 
@@ -75,18 +78,24 @@
         </div>
       </div>
     </template>
+
+    <ConfirmDialog :visible="confirmVisible" title="确认删除" :message="confirmMsg"
+      @confirm="handleConfirm" @cancel="confirmVisible = false" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { swapAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import OrderStatusTag from '../components/common/OrderStatusTag.vue'
 import StarRating from '../components/common/StarRating.vue'
+import ConfirmDialog from '../components/common/ConfirmDialog.vue'
 
 const props = defineProps({ id: [String, Number] })
+const router = useRouter()
 const order = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -96,12 +105,18 @@ const showShipDialog = ref(false)
 const shipInfo = ref('')
 const showRating = ref(false)
 const ratingScore = ref(5)
+const confirmVisible = ref(false)
+const confirmMsg = ref('')
+const confirmAction = ref(null)
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
 const isBuyer = computed(() => user?.id === order.value?.buyerId)
 const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
+const isDeletable = computed(() =>
+  isParticipant.value && ['CANCELLED', 'COMPLETED', 'REJECTED'].includes(order.value?.status)
+)
 
 const showMsg = (text, type = 'success') => { msg.value = text; msgType.value = type; setTimeout(() => msg.value = '', 3000) }
 
@@ -116,6 +131,11 @@ const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo:
 const doReceive = async () => { try { await swapAPI.receive(props.id); showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doCancelSwap = async () => { try { await swapAPI.cancel(props.id, { reason: '申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doRating = async () => { try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '评价失败', 'error') } }
+const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除？'; confirmAction.value = doDelete; confirmVisible.value = true }
+const doDelete = async () => {
+  try { await swapAPI.deleteSwap(props.id); confirmVisible.value = false; showMsg('已删除'); setTimeout(() => router.push('/orders'), 1500) } catch (e) { showMsg(e?.message || '删除失败', 'error') }
+}
+const handleConfirm = () => { if (confirmAction.value) confirmAction.value() }
 
 onMounted(fetchOrder)
 </script>
@@ -144,4 +164,5 @@ onMounted(fetchOrder)
 .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
+.btn-delete { color: #999 !important; border-color: #d9d9d9 !important; font-size: 12px !important; padding: 4px 12px !important; }
 </style>
