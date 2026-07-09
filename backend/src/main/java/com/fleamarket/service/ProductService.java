@@ -173,6 +173,17 @@ public class ProductService {
     }
 
     @Transactional
+    public ProductResponse adminOffProduct(Long productId, String reason) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        if (product.getStatus() != ProductStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_ACTIVE);
+        }
+        product.setStatus(ProductStatus.OFF);
+        return toResponse(productRepository.save(product));
+    }
+
+    @Transactional
     public ProductResponse offProduct(Long sellerId, Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));

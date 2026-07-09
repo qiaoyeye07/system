@@ -35,11 +35,13 @@
             <p>{{ product.description }}</p>
           </div>
           <div class="actions">
-            <button v-if="!isOwner" @click="contactSeller">联系卖家</button>
-            <button v-if="canPurchase" class="btn-primary" @click="buyNow">立即购买</button>
-            <button v-if="canSwap" class="btn-swap" @click="startSwap">发起交换</button>
-            <button v-if="!isOwner" class="btn-report" @click="showReport = true">举报</button>
+            <button v-if="!isOwner && !isAdmin" @click="contactSeller">联系卖家</button>
+            <button v-if="canPurchase && !isAdmin" class="btn-primary" @click="buyNow">立即购买</button>
+            <button v-if="canSwap && !isAdmin" class="btn-swap" @click="startSwap">发起交换</button>
+            <button v-if="!isOwner && !isAdmin" class="btn-report" @click="showReport = true">举报</button>
             <button v-if="isOwner && product.status === 'ACTIVE'" class="btn-danger" @click="confirmOffShelf">下架商品</button>
+            <button v-if="isAdmin && !isOwner" class="btn-contact" @click="contactSeller">联系卖家</button>
+            <button v-if="isAdmin && !isOwner && product.status === 'ACTIVE'" class="btn-danger" @click="showAdminOff = true">管理员下架</button>
           </div>
         </div>
       </div>
@@ -73,13 +75,29 @@
 
     <ConfirmDialog :visible="confirmVisible" title="下架商品" message="下架后商品不再公开展示，可重新上架。确认下架吗？"
       @confirm="handleOffShelf" @cancel="confirmVisible = false" />
+
+    <!-- 管理员下架弹窗 -->
+    <div v-if="showAdminOff" class="modal-overlay" @click.self="showAdminOff = false">
+      <div class="modal-card">
+        <h3>管理员下架</h3>
+        <p class="modal-desc">下架商品：{{ product.title }}</p>
+        <div class="form-group">
+          <label>下架原因</label>
+          <textarea v-model="adminOffReason" rows="3" placeholder="说明下架原因"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="showAdminOff = false">取消</button>
+          <button class="btn-primary" @click="handleAdminOff">确认下架</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { productAPI, reportAPI } from '../api/modules.js'
+import { productAPI, reportAPI, adminAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import ConfirmDialog from '../components/common/ConfirmDialog.vue'
@@ -92,6 +110,8 @@ const error = ref('')
 const currentImage = ref(0)
 const showReport = ref(false)
 const confirmVisible = ref(false)
+const showAdminOff = ref(false)
+const adminOffReason = ref('')
 const reportForm = ref({ reason: '', description: '' })
 
 const conditionMap = { NEW: '全新', LIKE_NEW: '几乎全新', USED: '有使用痕迹' }
@@ -100,6 +120,7 @@ const tradeTypeMap = { PICKUP: '自提', EXPRESS: '快递', BOTH: '两者均可'
 const userStr = localStorage.getItem('user')
 const currentUser = userStr ? JSON.parse(userStr) : null
 const isOwner = computed(() => currentUser?.id === product.value?.sellerId)
+const isAdmin = computed(() => currentUser?.role === 'ADMIN')
 const canPurchase = computed(() => !isOwner.value && product.value?.status === 'ACTIVE' && product.value?.tradeMode !== 'SWAP')
 const canSwap = computed(() => !isOwner.value && product.value?.status === 'ACTIVE' && (product.value?.tradeMode === 'SWAP' || product.value?.tradeMode === 'BOTH'))
 const imageList = computed(() => {
@@ -145,6 +166,15 @@ const submitReport = async () => {
     showReport.value = false
   } catch (e) { alert(e?.message || '提交失败') }
 }
+const handleAdminOff = async () => {
+  try {
+    const reason = adminOffReason.value.trim() || undefined
+    await adminAPI.offProduct(props.id, reason ? { reason } : {})
+    alert('已下架该商品')
+    showAdminOff.value = false
+    fetchProduct()
+  } catch (e) { alert(e?.message || '操作失败') }
+}
 
 onMounted(fetchProduct)
 </script>
@@ -177,6 +207,7 @@ onMounted(fetchProduct)
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 480px; }
 .modal-card h3 { margin-bottom: 16px; }
+.modal-desc { color: #666; font-size: 14px; margin-bottom: 12px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
 .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }

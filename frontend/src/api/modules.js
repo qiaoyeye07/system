@@ -94,5 +94,6 @@ export const adminAPI = {
   getReports: (params) => api.get('/admin/reports', { params }),
   acceptReport: (id, data) => api.post(`/admin/reports/${id}/accept`, data),
   rejectReport: (id, data) => api.post(`/admin/reports/${id}/reject`, data),
-  reviewAppeal: (id, data) => api.post(`/admin/reports/${id}/review-appeal`, data)
+  reviewAppeal: (id, data) => api.post(`/admin/reports/${id}/review-appeal`, data),
+  offProduct: (id, params) => api.put(`/admin/products/${id}/off`, null, { params })
 }

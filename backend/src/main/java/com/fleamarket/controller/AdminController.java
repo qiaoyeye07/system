@@ -9,6 +9,7 @@ import com.fleamarket.dto.response.ReportResponse;
 import com.fleamarket.dto.response.UserResponse;
 import com.fleamarket.service.AuthService;
 import com.fleamarket.service.OrderService;
+import com.fleamarket.service.ProductService;
 import com.fleamarket.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AdminController {
     private final AuthService authService;
     private final OrderService orderService;
     private final ReportService reportService;
+    private final ProductService productService;
 
     // ==================== 用户管理 ====================
 
@@ -111,5 +113,18 @@ public class AdminController {
         ReportResponse report = reportService.handleAppeal(id, appealResult);
         String msg = "UPHELD".equals(appealResult) ? "申诉已驳回，维持原判" : "申诉成立，已改判";
         return ApiResponse.success(msg, report);
+    }
+
+    // ==================== 商品管理 ====================
+
+    @PutMapping("/products/{id}/off")
+    public ApiResponse<com.fleamarket.dto.response.ProductResponse> offProduct(
+            @PathVariable Long id,
+            @RequestParam(required = false) String reason) {
+        com.fleamarket.dto.response.ProductResponse product = productService.adminOffProduct(id, reason);
+        String msg = reason != null && !reason.isBlank()
+                ? "商品已下架，原因：" + reason
+                : "商品已下架";
+        return ApiResponse.success(msg, product);
     }
 }
