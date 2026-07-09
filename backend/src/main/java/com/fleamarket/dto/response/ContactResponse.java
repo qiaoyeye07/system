@@ -19,5 +19,7 @@ public class ContactResponse {
     private String productTitle;
     private String lastMessage;
     private LocalDateTime lastMessageTime;
+    private Boolean lastMessageIsRead;
+    private Boolean lastMessageIsMine;
     private Long unreadCount;
 }

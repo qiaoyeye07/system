@@ -73,7 +73,8 @@ export const chatAPI = {
   getMessages: (contactId, params) => api.get(`/chat/conversation/${contactId}`, { params }),
   send: (data) => api.post('/chat/send', data),
   markRead: (contactId, params) => api.patch(`/chat/conversation/${contactId}/read`, null, { params }),
-  getUnreadCount: () => api.get('/chat/unread-count')
+  getUnreadCount: () => api.get('/chat/unread-count'),
+  deleteConversation: (contactId, params) => api.delete(`/chat/conversation/${contactId}`, { params })
 }
 
 // 评价

@@ -105,6 +105,7 @@ public class ChatService {
             if (!contactMap.containsKey(key)) {
                 long unreadCount = countUnread(userId, contactId, msg.getProduct() != null ? msg.getProduct().getId() : null);
 
+                boolean isMine = msg.getSender().getId().equals(userId);
                 contactMap.put(key, ContactResponse.builder()
                         .contactId(contactId)
                         .contactName(contactName)
@@ -113,6 +114,8 @@ public class ChatService {
                         .lastMessage(msg.getContent().length() > 50
                                 ? msg.getContent().substring(0, 50) + "..." : msg.getContent())
                         .lastMessageTime(msg.getCreatedAt())
+                        .lastMessageIsRead(msg.getIsRead())
+                        .lastMessageIsMine(isMine)
                         .unreadCount(unreadCount)
                         .build());
             }
@@ -129,6 +132,11 @@ public class ChatService {
     @Transactional
     public int markConversationAsRead(Long userId, Long contactId, Long productId) {
         return messageRepository.markConversationAsRead(userId, contactId, productId);
+    }
+
+    @Transactional
+    public int deleteConversation(Long userId, Long contactId, Long productId) {
+        return messageRepository.deleteConversationMessages(userId, contactId, productId);
     }
 
     private long countUnread(Long userId, Long contactId, Long productId) {
