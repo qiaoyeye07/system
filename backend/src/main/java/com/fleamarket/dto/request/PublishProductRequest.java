@@ -38,4 +38,6 @@ public class PublishProductRequest {
     @NotBlank(message = "所在地不能为空")
     @Size(min = 1, max = 50, message = "所在地长度为 1-50 个字符")
     private String location;
+
+    private String images;
 }

@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}/ratings").permitAll()
                 // WebSocket
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
                 // 管理端
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // 其余需要认证

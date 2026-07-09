@@ -1,7 +1,7 @@
 <template>
   <div class="product-card" @click="$router.push(`/product/${product.id}`)">
     <div class="card-image">
-      <img v-if="product.firstImage" :src="product.firstImage" :alt="product.title" />
+      <img v-if="firstImage" :src="firstImage" :alt="product.title" />
       <div v-else class="no-image">暂无图片</div>
     </div>
     <div class="card-body">
@@ -25,11 +25,18 @@ const props = defineProps({
 const conditionMap = { NEW: '全新', LIKE_NEW: '几乎全新', USED: '有使用痕迹' }
 const conditionText = computed(() => conditionMap[props.product.condition] || '')
 
+const firstImage = computed(() => {
+  if (!props.product.images) return null
+  return props.product.images.split(',')[0]
+})
+
 const timeText = computed(() => {
   if (!props.product.createdAt) return ''
   const diff = Date.now() - new Date(props.product.createdAt).getTime()
-  const hours = Math.floor(diff / 3600000)
-  if (hours < 1) return '刚刚'
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}小时前`
   return `${Math.floor(hours / 24)}天前`
 })

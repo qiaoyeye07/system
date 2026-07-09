@@ -11,7 +11,7 @@
         <span>图片</span><span>标题</span><span>价格</span><span>状态</span><span>时间</span><span>操作</span>
       </div>
       <div v-for="p in products" :key="p.id" class="table-row">
-        <img v-if="p.firstImage" :src="p.firstImage" class="thumb" />
+        <img v-if="getFirstImage(p)" :src="getFirstImage(p)" class="thumb" />
         <span v-else class="no-thumb">-</span>
         <span class="title">{{ p.title }}</span>
         <span class="price">¥{{ p.price?.toFixed(2) }}</span>
@@ -53,6 +53,10 @@ const fetchProducts = async () => {
 const handleOff = async (id) => {
   if (!confirm('下架后商品不再公开展示。确认下架吗？')) return
   try { await productAPI.offShelf(id); fetchProducts() } catch (e) { alert(e?.message || '操作失败') }
+}
+const getFirstImage = (p) => {
+  if (!p.images) return null
+  return p.images.split(',')[0]
 }
 watch(status, fetchProducts)
 onMounted(fetchProducts)

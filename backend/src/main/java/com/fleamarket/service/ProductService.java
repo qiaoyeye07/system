@@ -16,24 +16,67 @@ import com.fleamarket.repository.ProductRepository;
 import com.fleamarket.repository.RatingRepository;
 import com.fleamarket.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
+    @Value("${app.upload.path:./uploads}")
+    private String uploadPath;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final RatingRepository ratingRepository;
+
+    /**
+     * 保存上传的图片文件，返回逗号分隔的路径字符串
+     */
+    public String saveImages(List<MultipartFile> images) {
+        try {
+            Path uploadDir = Paths.get(uploadPath).toAbsolutePath();
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            return images.stream()
+                    .filter(f -> !f.isEmpty())
+                    .map(f -> {
+                        try {
+                            String ext = f.getOriginalFilename();
+                            ext = ext != null && ext.contains(".") ? ext.substring(ext.lastIndexOf(".")) : ".jpg";
+                            String filename = "uploads/" + UUID.randomUUID() + ext;
+                            Path dest = Paths.get(filename);
+                            if (!Files.exists(dest.getParent())) {
+                                Files.createDirectories(dest.getParent());
+                            }
+                            Files.copy(f.getInputStream(), dest);
+                            return filename;
+                        } catch (IOException e) {
+                            throw new RuntimeException("图片保存失败", e);
+                        }
+                    })
+                    .collect(Collectors.joining(","));
+        } catch (IOException e) {
+            throw new RuntimeException("创建上传目录失败", e);
+        }
+    }
 
     @Transactional
     public ProductResponse publish(Long sellerId, PublishProductRequest request) {
@@ -75,14 +118,22 @@ public class ProductService {
                 .tradeType(tradeType)
                 .tradeMode(tradeMode)
                 .location(request.getLocation().trim())
+                .images(request.getImages())
                 .status(ProductStatus.ACTIVE)
                 .build();
 
         return toResponse(productRepository.save(product));
     }
 
-    public Page<ProductResponse> listActiveProducts(Pageable pageable) {
-        return productRepository.findByStatus(ProductStatus.ACTIVE, pageable)
+    public Page<ProductResponse> listActiveProducts(Long categoryId, String sort, Pageable pageable) {
+        Sort sortObj = parseSort(sort);
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortObj);
+
+        if (categoryId != null) {
+            return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE, pageRequest)
+                    .map(this::toResponse);
+        }
+        return productRepository.findByStatus(ProductStatus.ACTIVE, pageRequest)
                 .map(this::toResponse);
     }
 
@@ -94,8 +145,14 @@ public class ProductService {
                 .map(this::toResponse);
     }
 
-    public Page<ProductResponse> search(String keyword, Pageable pageable) {
-        return productRepository.searchByKeyword(keyword, ProductStatus.ACTIVE, pageable)
+    public Page<ProductResponse> search(String keyword, Long categoryId, String sort, Pageable pageable) {
+        Sort sortObj = parseSort(sort);
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortObj);
+        if (categoryId != null) {
+            return productRepository.searchByKeywordAndCategory(keyword, ProductStatus.ACTIVE, categoryId, pageRequest)
+                    .map(this::toResponse);
+        }
+        return productRepository.searchByKeyword(keyword, ProductStatus.ACTIVE, pageRequest)
                 .map(this::toResponse);
     }
 
@@ -180,9 +237,14 @@ public class ProductService {
     }
 
     private Sort parseSort(String sort) {
-        if ("price_asc".equals(sort)) {
+        if (sort == null) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+        // 兼容 price_asc 和 price,asc 两种格式
+        String normalized = sort.replace(",", "_").toLowerCase();
+        if ("price_asc".equals(normalized)) {
             return Sort.by(Sort.Direction.ASC, "price");
-        } else if ("price_desc".equals(sort)) {
+        } else if ("price_desc".equals(normalized)) {
             return Sort.by(Sort.Direction.DESC, "price");
         }
         return Sort.by(Sort.Direction.DESC, "createdAt");

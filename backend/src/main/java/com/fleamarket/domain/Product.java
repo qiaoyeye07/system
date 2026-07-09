@@ -47,7 +47,7 @@ public class Product {
     private String tags;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "`condition`", nullable = false, length = 20)
     private ProductCondition condition;
 
     @Enumerated(EnumType.STRING)

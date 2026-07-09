@@ -6,10 +6,10 @@
       <button class="btn-back" @click="$router.back()">← 返回</button>
       <div class="detail-layout">
         <div class="detail-images">
-          <img v-if="product.images?.length" :src="product.images[currentImage]" :alt="product.title" />
+          <img v-if="imageList.length" :src="imageList[currentImage]" :alt="product.title" />
           <div v-else class="no-image">暂无图片</div>
-          <div v-if="product.images?.length > 1" class="image-dots">
-            <span v-for="(img, i) in product.images" :key="i" :class="{ active: i === currentImage }" @click="currentImage = i"></span>
+          <div v-if="imageList.length > 1" class="image-dots">
+            <span v-for="(img, i) in imageList" :key="i" :class="{ active: i === currentImage }" @click="currentImage = i"></span>
           </div>
         </div>
         <div class="detail-info">
@@ -26,8 +26,8 @@
             <span v-for="tag in product.tags.split(',')" :key="tag" class="tag">{{ tag.trim() }}</span>
           </div>
           <div class="seller-info">
-            <router-link :to="`/user/${product.seller?.id}`">
-              卖家：{{ product.seller?.username }} ★ {{ product.seller?.avgScore?.toFixed(1) || '暂无' }}
+            <router-link :to="`/user/${product.sellerId}`">
+              卖家：{{ product.sellerName }} ★ {{ (product.sellerRating || 0).toFixed(1) }}
             </router-link>
           </div>
           <div class="description">
@@ -35,7 +35,7 @@
             <p>{{ product.description }}</p>
           </div>
           <div class="actions">
-            <button @click="contactSeller">联系卖家</button>
+            <button v-if="!isOwner" @click="contactSeller">联系卖家</button>
             <button v-if="canPurchase" class="btn-primary" @click="buyNow">立即购买</button>
             <button v-if="canSwap" class="btn-swap" @click="startSwap">发起交换</button>
             <button v-if="!isOwner" class="btn-report" @click="showReport = true">举报</button>
@@ -99,9 +99,13 @@ const tradeTypeMap = { PICKUP: '自提', EXPRESS: '快递', BOTH: '两者均可'
 
 const userStr = localStorage.getItem('user')
 const currentUser = userStr ? JSON.parse(userStr) : null
-const isOwner = computed(() => currentUser?.id === product.value?.seller?.id)
+const isOwner = computed(() => currentUser?.id === product.value?.sellerId)
 const canPurchase = computed(() => !isOwner.value && product.value?.status === 'ACTIVE' && product.value?.tradeMode !== 'SWAP')
 const canSwap = computed(() => !isOwner.value && product.value?.status === 'ACTIVE' && (product.value?.tradeMode === 'SWAP' || product.value?.tradeMode === 'BOTH'))
+const imageList = computed(() => {
+  if (!product.value?.images) return []
+  return product.value.images.split(',').filter(Boolean)
+})
 
 const fetchProduct = async () => {
   loading.value = true
