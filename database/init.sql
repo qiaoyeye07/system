@@ -156,6 +156,7 @@ CREATE TABLE report (
     admin_note VARCHAR(500) COMMENT '管理员处理备注',
     appeal_reason VARCHAR(500) COMMENT '申诉理由',
     appeal_result VARCHAR(20) COMMENT 'UPHELD | OVERTURNED',
+    pre_appeal_status VARCHAR(20) COMMENT '申诉前状态',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_report_status (status, created_at),
@@ -273,9 +274,23 @@ INSERT INTO `order` (id, order_no, order_type, product_id, swap_product_id, buye
 
 -- 订单11：交换已确认，等待双方发货
 -- zhangsan 用机械键盘(4) 交换 lisi 的蓝牙音箱(7)
-(11, 'SWP-20260707-00004', 'SWAP', 7, 4, 2, 3, 'CONFIRMED', 0.00, NULL, NULL, NULL, '用我的机械键盘换你的蓝牙音箱，怎么样', '2026-07-07 15:00:00');
+(11, 'SWP-20260707-00004', 'SWAP', 7, 4, 2, 3, 'CONFIRMED', 0.00, NULL, NULL, NULL, '用我的机械键盘换你的蓝牙音箱，怎么样', '2026-07-07 15:00:00'),
 
-ALTER TABLE `order` AUTO_INCREMENT = 12;
+-- === 额外纠纷订单（用于验收测试）===
+
+-- 订单12：已收货，买家申请退款（纠纷）
+-- zhangsan 的 iPhone 被 zhaoliu 购买后退款
+(12, 'ORD-20260708-00008', 'CASH', 1, NULL, 5, 2, 'DISPUTE', 3500.00, '快递：SF2222222222', NULL, '收到手机屏幕有划痕，与描述"99新"严重不符', NULL, '2026-07-08 09:00:00'),
+
+-- 订单13：已收货，买家申请退款被拒，进入纠纷
+-- lisi 的《代码大全》被 wangwu 购买后退款
+(13, 'ORD-20260708-00009', 'CASH', 8, NULL, 4, 3, 'DISPUTE', 45.00, '快递：YT1111111111', NULL, '图书缺页，第3章到第5章全部丢失', NULL, '2026-07-08 14:00:00'),
+
+-- 订单14：已收货，买家申请退款（纠纷）
+-- wangwu 的台灯被 zhangsan 购买后退款
+(14, 'ORD-20260708-00010', 'CASH', 10, NULL, 2, 4, 'DISPUTE', 80.00, '快递：ZT8888888888', NULL, '台灯底座有裂痕，开关接触不良', NULL, '2026-07-08 16:00:00');
+
+ALTER TABLE `order` AUTO_INCREMENT = 15;
 
 -- 3.5 订单操作日志数据
 INSERT INTO order_log (id, order_id, operator_id, action_type, old_status, new_status, detail, created_at) VALUES
@@ -335,9 +350,32 @@ INSERT INTO order_log (id, order_id, operator_id, action_type, old_status, new_s
 -- 订单11（交换已确认，一方已发货）：zhangsan 用机械键盘换 lisi 的蓝牙音箱
 (34, 11, 2, 'CREATE',         NULL,            'PENDING_CONFIRM', '买家发起交换提议：用我的机械键盘换你的蓝牙音箱，怎么样', '2026-07-07 15:00:00'),
 (35, 11, 3, 'AGREE_SWAP',     'PENDING_CONFIRM','CONFIRMED',       '卖家同意交换',                                        '2026-07-07 15:30:00'),
-(36, 11, 2, 'SHIP',           'CONFIRMED',     'CONFIRMED',        '买家(交换方)发货',                                    '2026-07-07 16:00:00');
+(36, 11, 2, 'SHIP',           'CONFIRMED',     'CONFIRMED',        '买家(交换方)发货',                                    '2026-07-07 16:00:00'),
 
-ALTER TABLE order_log AUTO_INCREMENT = 37;
+-- 订单12（纠纷）：zhaoliu 买 zhangsan 的 iPhone，申请退款
+(37, 12, 5, 'CREATE',          NULL,            'PENDING_PAY', '买家下单',                                               '2026-07-08 09:00:00'),
+(38, 12, 5, 'PAY',             'PENDING_PAY',   'PAID',        '买家模拟付款',                                            '2026-07-08 09:10:00'),
+(39, 12, 2, 'SHIP',            'PAID',          'SHIPPED',     '卖家发货：SF2222222222',                                  '2026-07-08 10:00:00'),
+(40, 12, 5, 'RECEIVE',         'SHIPPED',       'RECEIVED',    '买家确认收货',                                            '2026-07-08 14:00:00'),
+(41, 12, 5, 'REQUEST_REFUND',  'RECEIVED',      'RECEIVED',    '买家申请退款：收到手机屏幕有划痕，与描述"99新"严重不符',       '2026-07-08 14:30:00'),
+(42, 12, 2, 'REJECT_REFUND',   'RECEIVED',      'DISPUTE',     '卖家拒绝退款：发货前已拍照留证，屏幕完好无损',                 '2026-07-08 15:00:00'),
+
+-- 订单13（纠纷）：wangwu 买 lisi 的《代码大全》，申请退款
+(43, 13, 4, 'CREATE',          NULL,            'PENDING_PAY', '买家下单',                                               '2026-07-08 14:00:00'),
+(44, 13, 4, 'PAY',             'PENDING_PAY',   'PAID',        '买家模拟付款',                                            '2026-07-08 14:10:00'),
+(45, 13, 3, 'SHIP',            'PAID',          'SHIPPED',     '卖家发货：YT1111111111',                                  '2026-07-08 15:00:00'),
+(46, 13, 4, 'RECEIVE',         'SHIPPED',       'RECEIVED',    '买家确认收货',                                            '2026-07-08 20:00:00'),
+(47, 13, 4, 'REQUEST_REFUND',  'RECEIVED',      'RECEIVED',    '买家申请退款：图书缺页，第3章到第5章全部丢失',                 '2026-07-08 20:30:00'),
+(48, 13, 3, 'REJECT_REFUND',   'RECEIVED',      'DISPUTE',     '卖家拒绝退款：发货时完整无缺，可能是快递损坏',                 '2026-07-08 21:00:00'),
+
+-- 订单14（纠纷）：zhangsan 买 wangwu 的台灯，申请退款
+(49, 14, 2, 'CREATE',          NULL,            'PENDING_PAY', '买家下单',                                               '2026-07-08 16:00:00'),
+(50, 14, 2, 'PAY',             'PENDING_PAY',   'PAID',        '买家模拟付款',                                            '2026-07-08 16:10:00'),
+(51, 14, 4, 'SHIP',            'PAID',          'SHIPPED',     '卖家发货：ZT8888888888',                                  '2026-07-08 17:00:00'),
+(52, 14, 2, 'RECEIVE',         'SHIPPED',       'RECEIVED',    '买家确认收货',                                            '2026-07-09 08:00:00'),
+(53, 14, 2, 'REQUEST_REFUND',  'RECEIVED',      'DISPUTE',     '买家申请退款：台灯底座有裂痕，开关接触不良',                    '2026-07-09 08:30:00');
+
+ALTER TABLE order_log AUTO_INCREMENT = 54;
 
 -- 3.6 聊天消息数据
 INSERT INTO message (id, sender_id, receiver_id, product_id, content, is_read, created_at) VALUES
@@ -371,21 +409,39 @@ INSERT INTO rating (id, order_id, rater_id, rated_user_id, score, created_at) VA
 
 ALTER TABLE rating AUTO_INCREMENT = 5;
 
--- 3.8 举报数据
-INSERT INTO report (id, reporter_id, target_type, target_id, reason, description, status, admin_note, created_at) VALUES
--- 举报1：wangwu 举报 lisi 的蓝牙音箱是假货（待处理）
-(1, 4, 'PRODUCT', 7, 'FAKE_DESC', '收到后发现音质很差，logo印刷模糊，怀疑是假货', 'PENDING', NULL, '2026-07-07 18:00:00'),
+-- 3.8 举报数据（覆盖各种状态）
+INSERT INTO report (id, reporter_id, target_type, target_id, reason, description, status, admin_note, appeal_reason, appeal_result, pre_appeal_status, created_at) VALUES
+-- 举报1：wangwu 举报 lisi 的蓝牙音箱是假货（待处理 PENDING）
+(1, 4, 'PRODUCT', 7, 'FAKE_DESC', '收到后发现音质很差，logo印刷模糊，怀疑是假货', 'PENDING', NULL, NULL, NULL, NULL, '2026-07-07 18:00:00'),
 
--- 举报2：zhaoliu 举报 sunqi 骚扰（待处理）
-(2, 5, 'USER', 6, 'HARASS', '这个人在聊天中多次发送不雅消息，已截图保留', 'PENDING', NULL, '2026-07-07 20:00:00'),
+-- 举报2：zhaoliu 举报 sunqi 骚扰（待处理 PENDING）
+(2, 5, 'USER', 6, 'HARASS', '这个人在聊天中多次发送不雅消息，已截图保留', 'PENDING', NULL, NULL, NULL, NULL, '2026-07-07 20:00:00'),
 
--- 举报3：zhangsan 举报一个违禁品商品（已受理）
-(3, 2, 'PRODUCT', 5, 'PROHIBITED', '这个显示器描述说不支持退货，存在欺诈嫌疑', 'REJECTED', '经核实，该商品信息属实，不支持退货属于卖家个人意愿，不构成违规', '2026-07-04 18:00:00'),
+-- 举报3：zhangsan 举报一个违禁品商品（已驳回 REJECTED）
+(3, 2, 'PRODUCT', 5, 'PROHIBITED', '这个显示器描述说不支持退货，存在欺诈嫌疑', 'REJECTED', '经核实，该商品信息属实，不支持退货属于卖家个人意愿，不构成违规', NULL, NULL, NULL, '2026-07-04 18:00:00'),
 
--- 举报4：lisi 举报虚假描述（处理中）
-(4, 3, 'PRODUCT', 10, 'FAKE_DESC', '台灯描述写"几乎全新"，但实物有明显的磕碰和划痕', 'PROCESSING', NULL, '2026-07-07 21:00:00');
+-- 举报4：lisi 举报虚假描述（待处理 PENDING）
+(4, 3, 'PRODUCT', 10, 'FAKE_DESC', '台灯描述写"几乎全新"，但实物有明显的磕碰和划痕', 'PENDING', NULL, NULL, NULL, NULL, '2026-07-07 21:00:00'),
 
-ALTER TABLE report AUTO_INCREMENT = 5;
+-- 举报5：wangwu 举报 zhangsan 的 iPhone 描述不符（已受理 ACCEPTED）
+(5, 4, 'PRODUCT', 1, 'FAKE_DESC', '标题写99新，但边框有明显磕碰，电池健康度只有85%不是92%', 'ACCEPTED', '经核实属实，商品已下架', NULL, NULL, NULL, '2026-07-05 10:00:00'),
+
+-- 举报6：zhaoliu 举报诈骗行为（已受理 ACCEPTED）
+(6, 5, 'USER', 2, 'FRAUD', 'zhangsan 让我先微信转账再发货，疑似诈骗', 'ACCEPTED', '经核实属实，已对卖家进行警告处理', NULL, NULL, NULL, '2026-07-06 15:00:00'),
+
+-- 举报7：zhangsan 申诉（申诉中 APPEALING）— 举报5已被受理，zhangsan申诉
+(7, 2, 'PRODUCT', 1, 'FAKE_DESC', '这是恶意举报，手机确实99新', 'APPEALING', '经核实属实，商品已下架', '手机确实没有磕碰，电池健康度我有截图证明是92%', NULL, 'ACCEPTED', '2026-07-05 12:00:00'),
+
+-- 举报8：sunqi 举报骚扰（已驳回 REJECTED — 申诉后维持原判）
+(8, 6, 'USER', 5, 'HARASS', 'zhaoliu 不断给我发骚扰消息', 'REJECTED', '经核实不构成骚扰，属于正常交流', '他每天都给我发几十条消息问在吗', 'UPHELD', 'REJECTED', '2026-07-03 09:00:00'),
+
+-- 举报9：wangwu 举报违禁品（待处理 PENDING）
+(9, 4, 'PRODUCT', 6, 'PROHIBITED', '羽绒服里可能填充了不明材料，标签信息模糊', 'PENDING', NULL, NULL, NULL, NULL, '2026-07-08 08:00:00'),
+
+-- 举报10：zhaoliu 举报消息骚扰（已受理 ACCEPTED，后被申诉改判）
+(10, 5, 'MESSAGE', 8, 'HARASS', 'lisi 在聊天中持续发送商业推广链接', 'REJECTED', NULL, '他只是分享了一个商品链接而已', 'OVERTURNED', 'ACCEPTED', '2026-07-06 10:00:00');
+
+ALTER TABLE report AUTO_INCREMENT = 11;
 
 
 -- ----------------------------
