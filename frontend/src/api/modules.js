@@ -52,6 +52,7 @@ export const orderAPI = {
   agreeRefund: (id) => api.post(`/orders/${id}/refund/agree`),
   rejectRefund: (id) => api.post(`/orders/${id}/refund/reject`),
   escalate: (id, data) => api.post(`/orders/${id}/escalate`, data),
+  escalateCancel: (id, data) => api.post(`/orders/${id}/escalate-cancel`, data),
   cancelRefund: (id) => api.post(`/orders/${id}/cancel-refund`)
 }
 

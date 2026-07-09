@@ -164,11 +164,41 @@ public class OrderService {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有待处理的取消申请");
         }
 
-        String detail = isBuyer ? "买家撤销取消申请" : "卖家拒绝取消申请";
-        order.setCancelReason(null);
+        if (isBuyer) {
+            // 买家撤销取消申请：清除原因
+            order.setCancelReason(null);
+            orderRepository.save(order);
+            createLog(order, order.getBuyer(), ActionType.CANCEL, "PAID", "PAID", "买家撤销取消申请");
+        } else {
+            // 卖家拒绝取消：保留 cancelReason，买家可选择申诉
+            orderRepository.save(order);
+            createLog(order, order.getSeller(), ActionType.REJECT_REFUND, "PAID", "PAID", "卖家拒绝取消申请");
+        }
+
+        return toResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse escalateCancelToDispute(Long userId, Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        boolean isBuyer = order.getBuyer().getId().equals(userId);
+        boolean isSeller = order.getSeller().getId().equals(userId);
+        if (!isBuyer && !isSeller) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        if (!"PAID".equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持申请管理员介入");
+        }
+
+        String who = isBuyer ? "买家" : "卖家";
+        order.setStatus("DISPUTE");
+        order.setCancelReason(reason);
         orderRepository.save(order);
         createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
-                ActionType.CANCEL, "PAID", "PAID", detail);
+                ActionType.REQUEST_REFUND, "PAID", "DISPUTE",
+                who + "就取消申请管理员介入：" + reason);
 
         return toResponse(order);
     }
@@ -212,15 +242,20 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse escalateToDispute(Long buyerId, Long orderId, String reason) {
-        Order order = getOrder(orderId, buyerId, true);
-        validateStatus(order, "RECEIVED", "申请管理员介入");
+    public OrderResponse escalateToDispute(Long userId, Long orderId, String reason) {
+        Order order = getOrder(orderId, userId, null);
+        if (!"RECEIVED".equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持申请管理员介入");
+        }
 
+        boolean isBuyer = order.getBuyer().getId().equals(userId);
+        String who = isBuyer ? "买家" : "卖家";
         order.setStatus("DISPUTE");
         order.setRefundReason(reason);
         orderRepository.save(order);
-        createLog(order, order.getBuyer(), ActionType.REQUEST_REFUND, "RECEIVED", "DISPUTE",
-                "买家申请管理员介入：" + reason);
+        createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
+                ActionType.REQUEST_REFUND, "RECEIVED", "DISPUTE",
+                who + "申请管理员介入：" + reason);
 
         return toResponse(order);
     }
@@ -252,12 +287,15 @@ public class OrderService {
         }
 
         if ("APPROVE_REFUND".equals(action)) {
-            return cancelOrder(order, getSystemUser(), "管理员裁定退款：" + reason);
+            return cancelOrder(order, getSystemUser(), "管理员裁定：" + reason);
         } else {
-            order.setStatus("RECEIVED");
+            // 驳回纠纷：取消类纠纷回到 PAID，退款类纠纷回到 RECEIVED
+            String returnStatus = order.getCancelReason() != null ? "PAID" : "RECEIVED";
+            order.setStatus(returnStatus);
             order.setRefundReason(null);
+            order.setCancelReason(null);
             orderRepository.save(order);
-            createLog(order, getSystemUser(), ActionType.ADMIN_JUDGE, "DISPUTE", "RECEIVED",
+            createLog(order, getSystemUser(), ActionType.ADMIN_JUDGE, "DISPUTE", returnStatus,
                     "管理员裁定维持原状：" + reason);
             return toResponse(order);
         }
