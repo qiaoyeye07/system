@@ -58,4 +58,12 @@ public class ChatController {
         Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.success(chatService.markConversationAsRead(userId, contactId, productId));
     }
+
+    @DeleteMapping("/chat/conversation/{contactId}")
+    public ApiResponse<Integer> deleteConversation(@PathVariable Long contactId,
+                                                   @RequestParam(required = false) Long productId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        int deleted = chatService.deleteConversation(userId, contactId, productId);
+        return ApiResponse.success("已删除 " + deleted + " 条对话记录", deleted);
+    }
 }

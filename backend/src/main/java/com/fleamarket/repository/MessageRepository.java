@@ -48,4 +48,12 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
            "CASE WHEN m2.sender.id = :userId THEN m2.receiver.id ELSE m2.sender.id END, COALESCE(m2.product.id, 0)) " +
            "ORDER BY m.createdAt DESC")
     List<Message> findLastMessagesByUser(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM Message m WHERE ((m.sender.id = :userId1 AND m.receiver.id = :userId2) " +
+           "OR (m.sender.id = :userId2 AND m.receiver.id = :userId1)) " +
+           "AND (:productId IS NULL OR m.product.id = :productId)")
+    int deleteConversationMessages(@Param("userId1") Long userId1,
+                                   @Param("userId2") Long userId2,
+                                   @Param("productId") Long productId);
 }
