@@ -18,8 +18,8 @@
         <OrderStatusTag :status="p.status" />
         <span class="time">{{ p.createdAt?.slice(0, 10) }}</span>
         <span>
+          <button class="btn-view" @click="$router.push(`/product/${p.id}`)">查看</button>
           <button v-if="p.status === 'ACTIVE'" class="btn-off" @click="handleOff(p.id)">下架</button>
-          <button v-else class="btn-view" @click="$router.push(`/product/${p.id}`)">查看</button>
         </span>
       </div>
     </div>
