@@ -41,6 +41,7 @@ export const orderAPI = {
   create: (data) => api.post('/orders', data),
   getMyOrders: (params) => api.get('/orders', { params }),
   getDetail: (id) => api.get(`/orders/${id}`),
+  getLogs: (id) => api.get(`/orders/${id}/logs`),
   pay: (id) => api.post(`/orders/${id}/pay`),
   ship: (id, data) => api.post(`/orders/${id}/ship`, data),
   receive: (id) => api.post(`/orders/${id}/receive`),

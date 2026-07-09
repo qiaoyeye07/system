@@ -52,10 +52,13 @@
           <template v-if="order.status === 'RECEIVED' && isBuyer && !order.refundReason">
             <button @click="showRefundDialog = true">申请退款</button>
           </template>
-          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason">
+          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && !sellerRejectedRefund">
             <p class="refund-info">退款中：{{ order.refundReason }}</p>
-            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
             <button @click="doCancelRefund">取消退款申请</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && sellerRejectedRefund">
+            <p class="refund-info dispute-info">卖家已拒绝退款：{{ order.refundReason }}</p>
+            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
           </template>
           <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason">
             <p class="refund-info">买家申请退款：{{ order.refundReason }}</p>
@@ -159,6 +162,7 @@ const showRefundDialog = ref(false)
 const refundReason = ref('')
 const showEscalateDialog = ref(false)
 const escalateReason = ref('')
+const orderLogs = ref([])
 const showRating = ref(false)
 const confirmVisible = ref(false)
 const confirmMsg = ref('')
@@ -171,6 +175,9 @@ const user = userStr ? JSON.parse(userStr) : null
 const isBuyer = computed(() => user?.id === order.value?.buyerId)
 const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
+const sellerRejectedRefund = computed(() =>
+  orderLogs.value.some(log => log.actionType === 'REJECT_REFUND')
+)
 
 const fetchOrder = async () => {
   loading.value = true
@@ -178,11 +185,16 @@ const fetchOrder = async () => {
   try {
     const res = await orderAPI.getDetail(props.id)
     order.value = res.data
+    // 也加载操作日志用于判断卖家是否已拒绝退款
+    try {
+      const logRes = await orderAPI.getLogs(props.id)
+      orderLogs.value = logRes.data || []
+    } catch (e) { orderLogs.value = [] }
   } catch (e) {
-    // Try swap order
     try {
       const res = await swapAPI.getDetail(props.id)
       order.value = res.data
+      orderLogs.value = []
     } catch (e2) {
       error.value = e?.message || '加载失败'
     }
