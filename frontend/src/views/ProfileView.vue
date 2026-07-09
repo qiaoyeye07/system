@@ -50,12 +50,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { userAPI, reportAPI } from '../api/modules.js'
+import { useUserStore } from '../store/user.js'
 import ProductCard from '../components/common/ProductCard.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
 
 const props = defineProps({ id: [String, Number] })
+const store = useUserStore()
 const profile = ref(null)
 const activeProducts = ref([])
 const loading = ref(true)
@@ -63,13 +65,16 @@ const error = ref('')
 const showReport = ref(false)
 const reportForm = ref({ reason: '', description: '' })
 
-const userStr = localStorage.getItem('user')
-const currentUser = userStr ? JSON.parse(userStr) : null
+const currentUser = store.getCurrentUser()
 const isSelf = computed(() => currentUser?.id == props.id)
 
 const fetchProfile = async () => {
   loading.value = true
   error.value = ''
+  // Pre-fill from store if viewing own profile
+  if (isSelf.value && currentUser) {
+    profile.value = { ...currentUser, avgScore: '--', ratingCount: 0 }
+  }
   try {
     const [profileRes, productsRes] = await Promise.all([
       userAPI.getProfile(props.id),

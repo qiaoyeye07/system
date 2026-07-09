@@ -61,4 +61,9 @@ public class AuthController {
         UserResponse user = authService.getUserById(userId);
         return ApiResponse.success(user);
     }
+
+    @GetMapping("/api/users/{id}")
+    public ApiResponse<UserResponse> getUser(@PathVariable Long id) {
+        return ApiResponse.success(authService.getUserById(id));
+    }
 }

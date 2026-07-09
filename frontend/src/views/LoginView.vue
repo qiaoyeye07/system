@@ -24,9 +24,11 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authAPI } from '../api/modules.js'
+import { useUserStore } from '../store/user.js'
 
 const router = useRouter()
 const route = useRoute()
+const store = useUserStore()
 const loading = ref(false)
 const errorMsg = ref('')
 const form = reactive({ username: '', password: '' })
@@ -36,8 +38,11 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res = await authAPI.login({ username: form.username.trim(), password: form.password })
-    localStorage.setItem('token', res.data.token)
-    localStorage.setItem('user', JSON.stringify(res.data.user))
+    store.login(res.data.token, {
+      id: res.data.userId,
+      username: res.data.username,
+      role: res.data.role
+    })
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } catch (e) {
