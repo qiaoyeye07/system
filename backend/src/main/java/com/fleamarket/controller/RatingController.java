@@ -22,7 +22,7 @@ public class RatingController {
     public ApiResponse<RatingResponse> rate(@RequestParam Long orderId,
                                               @Valid @RequestBody CreateRatingRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        RatingResponse rating = ratingService.rate(userId, orderId, request.getScore());
+        RatingResponse rating = ratingService.rate(userId, orderId, request.getScore(), request.getComment());
         return ApiResponse.success("评价已提交", rating);
     }
 

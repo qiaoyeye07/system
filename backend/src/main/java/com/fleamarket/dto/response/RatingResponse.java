@@ -21,5 +21,6 @@ public class RatingResponse {
     private Long ratedUserId;
     private String ratedUserName;
     private Integer score;
+    private String comment;
     private LocalDateTime createdAt;
 }

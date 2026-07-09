@@ -90,7 +90,7 @@ export const chatAPI = {
 
 // 评价
 export const ratingAPI = {
-  submit: (data) => api.post('/ratings', { score: data.score }, { params: { orderId: data.orderId } })
+  submit: (data) => api.post('/ratings', { score: data.score, comment: data.comment }, { params: { orderId: data.orderId } })
 }
 
 // 举报

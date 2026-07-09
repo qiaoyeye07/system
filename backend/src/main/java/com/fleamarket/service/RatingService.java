@@ -25,10 +25,11 @@ public class RatingService {
     private final UserRepository userRepository;
 
     @Transactional
-    public RatingResponse rate(Long raterId, Long orderId, int score) {
+    public RatingResponse rate(Long raterId, Long orderId, int score, String comment) {
         if (score < 1 || score > 5) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "评分范围为 1-5 星");
         }
+        String normalizedComment = comment == null ? null : comment.trim();
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -58,6 +59,7 @@ public class RatingService {
                 .rater(rater)
                 .ratedUser(ratedUser)
                 .score(score)
+                .comment(normalizedComment == null || normalizedComment.isEmpty() ? null : normalizedComment)
                 .build();
 
         rating = ratingRepository.save(rating);
@@ -80,6 +82,7 @@ public class RatingService {
                 .ratedUserId(rating.getRatedUser().getId())
                 .ratedUserName(rating.getRatedUser().getUsername())
                 .score(rating.getScore())
+                .comment(rating.getComment())
                 .createdAt(rating.getCreatedAt())
                 .build();
     }

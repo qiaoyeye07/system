@@ -23,6 +23,7 @@
               <span>{{ formatDate(rating.createdAt) }}</span>
             </div>
             <StarRating :model-value="rating.score" :show-text="true" readonly />
+            <p v-if="rating.comment" class="rating-comment">{{ rating.comment }}</p>
             <div class="rating-order">订单：{{ rating.orderNo || '-' }} → 查看详情</div>
           </div>
         </div>
@@ -157,6 +158,7 @@ onMounted(fetchProfile)
 .rating-item { border: 1px solid #f0f0f0; border-radius: 8px; padding: 12px; }
 .rating-header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 14px; }
 .rating-header span { color: #999; }
+.rating-comment { margin: 8px 0 0; color: #333; line-height: 1.6; word-break: break-word; }
 .rating-order { margin-top: 6px; font-size: 13px; color: #999; }
 .actions { margin-bottom: 16px; }
 .section-title { margin-top: 24px; }

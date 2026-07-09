@@ -47,7 +47,7 @@
             <button class="btn-primary" @click="doReceive">确认收货</button>
           </template>
           <template v-if="order.status === 'COMPLETED' && isParticipant">
-            <button @click="showRating = true">评价对方</button>
+            <button @click="showRating = true">评价</button>
           </template>
           <template v-if="isDeletable">
             <button class="btn-delete" @click="confirmDelete">删除订单</button>
@@ -69,8 +69,12 @@
       <!-- 评价弹窗 -->
       <div v-if="showRating" class="modal-overlay" @click.self="showRating = false">
         <div class="modal-card">
-          <h4>评价对方</h4>
+          <h4>评价</h4>
           <StarRating v-model="ratingScore" :showText="true" />
+          <div class="form-group" style="margin-top:16px">
+            <label>评价内容</label>
+            <textarea v-model="ratingComment" rows="4" maxlength="500" placeholder="写下本次交换体验，比如沟通、物品情况、履约情况等"></textarea>
+          </div>
           <div class="modal-actions" style="margin-top:16px">
             <button class="btn-cancel" @click="showRating = false">取消</button>
             <button class="btn-primary" @click="doRating">提交评价</button>
@@ -105,6 +109,7 @@ const showShipDialog = ref(false)
 const shipInfo = ref('')
 const showRating = ref(false)
 const ratingScore = ref(5)
+const ratingComment = ref('')
 const confirmVisible = ref(false)
 const confirmMsg = ref('')
 const confirmAction = ref(null)
@@ -130,7 +135,14 @@ const doWithdraw = async () => { try { await swapAPI.withdraw(props.id); showMsg
 const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doReceive = async () => { try { await swapAPI.receive(props.id); showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doCancelSwap = async () => { try { await swapAPI.cancel(props.id, { reason: '申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
-const doRating = async () => { try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '评价失败', 'error') } }
+const doRating = async () => {
+  try {
+    await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value, comment: ratingComment.value.trim() })
+    showRating.value = false
+    ratingComment.value = ''
+    showMsg('评价已提交')
+  } catch (e) { showMsg(e?.message || '评价失败', 'error') }
+}
 const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除？'; confirmAction.value = doDelete; confirmVisible.value = true }
 const doDelete = async () => {
   try { await swapAPI.deleteSwap(props.id); confirmVisible.value = false; showMsg('已删除'); setTimeout(() => router.push('/orders'), 1500) } catch (e) { showMsg(e?.message || '删除失败', 'error') }

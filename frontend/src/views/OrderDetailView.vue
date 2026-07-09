@@ -85,7 +85,7 @@
             <p class="refund-info dispute-info">买家已申请管理员介入，等待管理员裁决</p>
           </template>
           <template v-if="order.status === 'COMPLETED' && isParticipant">
-            <button @click="showRating = true">评价对方</button>
+            <button @click="showRating = true">评价</button>
           </template>
           <template v-if="isDeletable">
             <button class="btn-delete" @click="confirmDelete">删除订单</button>
@@ -167,8 +167,12 @@
       <!-- 评价弹窗 -->
       <div v-if="showRating" class="modal-overlay" @click.self="showRating = false">
         <div class="modal-card">
-          <h4>评价对方</h4>
+          <h4>评价</h4>
           <StarRating v-model="ratingScore" :showText="true" />
+          <div class="form-group" style="margin-top:16px">
+            <label>评价内容</label>
+            <textarea v-model="ratingComment" rows="4" maxlength="500" placeholder="写下本次交易体验，比如沟通、商品情况、发货速度等"></textarea>
+          </div>
           <div class="modal-actions" style="margin-top:16px">
             <button class="btn-cancel" @click="showRating = false">取消</button>
             <button class="btn-primary" @click="doRating">提交评价</button>
@@ -216,6 +220,7 @@ const confirmMsg = ref('')
 const confirmAction = ref(null)
 const shipInfo = ref('')
 const ratingScore = ref(5)
+const ratingComment = ref('')
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
@@ -306,7 +311,12 @@ const doCancelRefund = async () => {
   try { await orderAPI.cancelRefund(props.id); showMsg('已取消退款申请'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const doRating = async () => {
-  try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  try {
+    await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value, comment: ratingComment.value.trim() })
+    showRating.value = false
+    ratingComment.value = ''
+    showMsg('评价已提交')
+  } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const handleConfirm = () => { if (confirmAction.value) confirmAction.value() }
 const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除该订单？'; confirmAction.value = doDelete; confirmVisible.value = true }

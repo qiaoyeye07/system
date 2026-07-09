@@ -135,6 +135,7 @@ CREATE TABLE rating (
     rater_id BIGINT NOT NULL COMMENT '评价人',
     rated_user_id BIGINT NOT NULL COMMENT '被评价人',
     score TINYINT NOT NULL COMMENT '1-5 星',
+    comment VARCHAR(500) COMMENT '评价内容',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_rating_order_rater (order_id, rater_id),
     KEY idx_rating_rated_user (rated_user_id),
@@ -398,14 +399,14 @@ INSERT INTO message (id, sender_id, receiver_id, product_id, content, is_read, c
 ALTER TABLE message AUTO_INCREMENT = 11;
 
 -- 3.7 评价数据
-INSERT INTO rating (id, order_id, rater_id, rated_user_id, score, created_at) VALUES
+INSERT INTO rating (id, order_id, rater_id, rated_user_id, score, comment, created_at) VALUES
 -- 订单1（完成交易）：lisi 和 zhangsan 互评
-(1, 1, 3, 2, 5, '2026-07-09 15:00:00'),  -- lisi 评 zhangsan：5星
-(2, 1, 2, 3, 5, '2026-07-09 16:00:00'),  -- zhangsan 评 lisi：5星
+(1, 1, 3, 2, 5, '沟通很顺畅，商品和描述一致，交易体验很好。', '2026-07-09 15:00:00'),  -- lisi 评 zhangsan：5星
+(2, 1, 2, 3, 5, '买家很爽快，线下自提准时完成。', '2026-07-09 16:00:00'),  -- zhangsan 评 lisi：5星
 
 -- 订单8（交换完成）：lisi 和 zhangsan 互评
-(3, 8, 3, 2, 4, '2026-07-07 13:00:00'),  -- lisi 评 zhangsan：4星（键盘有点打油但能用）
-(4, 8, 2, 3, 5, '2026-07-07 14:00:00');  -- zhangsan 评 lisi：5星
+(3, 8, 3, 2, 4, '键盘有点打油，但整体能正常使用。', '2026-07-07 13:00:00'),  -- lisi 评 zhangsan：4星
+(4, 8, 2, 3, 5, '交换流程很顺利，对方描述清楚。', '2026-07-07 14:00:00');  -- zhangsan 评 lisi：5星
 
 ALTER TABLE rating AUTO_INCREMENT = 5;
 
