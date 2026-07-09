@@ -63,6 +63,17 @@
           </div>
         </div>
       </div>
+      <!-- 评价弹窗 -->
+      <div v-if="showRating" class="modal-overlay" @click.self="showRating = false">
+        <div class="modal-card">
+          <h4>评价对方</h4>
+          <StarRating v-model="ratingScore" :showText="true" />
+          <div class="modal-actions" style="margin-top:16px">
+            <button class="btn-cancel" @click="showRating = false">取消</button>
+            <button class="btn-primary" @click="doRating">提交评价</button>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -73,6 +84,7 @@ import { swapAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import OrderStatusTag from '../components/common/OrderStatusTag.vue'
+import StarRating from '../components/common/StarRating.vue'
 
 const props = defineProps({ id: [String, Number] })
 const order = ref(null)
@@ -83,6 +95,7 @@ const msgType = ref('success')
 const showShipDialog = ref(false)
 const shipInfo = ref('')
 const showRating = ref(false)
+const ratingScore = ref(5)
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
@@ -102,6 +115,7 @@ const doWithdraw = async () => { try { await swapAPI.withdraw(props.id); showMsg
 const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doReceive = async () => { try { await swapAPI.receive(props.id); showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doCancelSwap = async () => { try { await swapAPI.cancel(props.id, { reason: '申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const doRating = async () => { try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '评价失败', 'error') } }
 
 onMounted(fetchOrder)
 </script>

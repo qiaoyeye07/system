@@ -49,6 +49,21 @@
         </div>
       </div>
 
+      <!-- 退款弹窗 -->
+      <div v-if="showRefundDialog" class="modal-overlay" @click.self="showRefundDialog = false">
+        <div class="modal-card">
+          <h4>申请退款</h4>
+          <div class="form-group">
+            <label>退款原因 *</label>
+            <textarea v-model="refundReason" rows="3" maxlength="500" placeholder="请描述退款原因..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="showRefundDialog = false">取消</button>
+            <button class="btn-primary" :disabled="!refundReason.trim()" @click="doRefund">提交申请</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 发货弹窗 -->
       <div v-if="showShipDialog" class="modal-overlay" @click.self="showShipDialog = false">
         <div class="modal-card">
@@ -99,6 +114,7 @@ const msg = ref('')
 const msgType = ref('success')
 const showShipDialog = ref(false)
 const showRefundDialog = ref(false)
+const refundReason = ref('')
 const showRating = ref(false)
 const confirmVisible = ref(false)
 const confirmMsg = ref('')
@@ -148,6 +164,9 @@ const doCancel = async () => {
 const requestCancel = async () => {
   try { await orderAPI.cancel(props.id, { reason: '买家申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
+const doRefund = async () => {
+  try { await orderAPI.refund(props.id, { reason: refundReason.value }); showRefundDialog.value = false; showMsg('退款申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+}
 const doRating = async () => {
   try { await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value }); showRating.value = false; showMsg('评价已提交') } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
@@ -175,6 +194,7 @@ onMounted(fetchOrder)
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
 .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
 </style>

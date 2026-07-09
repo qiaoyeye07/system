@@ -28,6 +28,7 @@ public class OrderResponse {
     private String buyerName;
     private Long sellerId;
     private String sellerName;
+    private String counterpartyName;
     private String status;
     private BigDecimal amount;
     private String logisticsInfo;

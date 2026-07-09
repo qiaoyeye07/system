@@ -357,19 +357,19 @@ public class OrderService {
     public Page<OrderResponse> listBuyOrders(Long buyerId, OrderType orderType, String status, Pageable pageable) {
         if (status != null && !status.isEmpty()) {
             return orderRepository.findByBuyerIdAndOrderTypeAndStatus(buyerId, orderType, status, pageable)
-                    .map(this::toResponse);
+                    .map(o -> toResponseWithCounterparty(o, false));
         }
         return orderRepository.findByBuyerIdAndOrderType(buyerId, orderType, pageable)
-                .map(this::toResponse);
+                .map(o -> toResponseWithCounterparty(o, false));
     }
 
     public Page<OrderResponse> listSellOrders(Long sellerId, OrderType orderType, String status, Pageable pageable) {
         if (status != null && !status.isEmpty()) {
             return orderRepository.findBySellerIdAndOrderTypeAndStatus(sellerId, orderType, status, pageable)
-                    .map(this::toResponse);
+                    .map(o -> toResponseWithCounterparty(o, true));
         }
         return orderRepository.findBySellerIdAndOrderType(sellerId, orderType, pageable)
-                .map(this::toResponse);
+                .map(o -> toResponseWithCounterparty(o, true));
     }
 
     public List<OrderLogResponse> getOrderLogs(Long orderId) {
@@ -538,5 +538,13 @@ public class OrderService {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+
+    private OrderResponse toResponseWithCounterparty(Order order, boolean isSellerView) {
+        OrderResponse response = toResponse(order);
+        response.setCounterpartyName(isSellerView
+                ? order.getBuyer().getUsername()
+                : order.getSeller().getUsername());
+        return response;
     }
 }
