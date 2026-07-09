@@ -9,10 +9,10 @@
         <h3>订单概要</h3>
         <div class="info-grid">
           <span>订单编号：{{ order.orderNo }}</span>
-          <span>商品：{{ order.product?.title }}</span>
+          <span>商品：{{ order.productTitle }}</span>
           <span>金额：¥{{ order.amount?.toFixed(2) }}</span>
-          <span>买家：{{ order.buyer?.username }}</span>
-          <span>卖家：{{ order.seller?.username }}</span>
+          <span>买家：{{ order.buyerName }}</span>
+          <span>卖家：{{ order.sellerName }}</span>
           <span>状态：<OrderStatusTag :status="order.status" /></span>
           <span>创建时间：{{ order.createdAt }}</span>
         </div>
@@ -124,8 +124,8 @@ const ratingScore = ref(5)
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
-const isBuyer = computed(() => user?.id === order.value?.buyer?.id)
-const isSeller = computed(() => user?.id === order.value?.seller?.id)
+const isBuyer = computed(() => user?.id === order.value?.buyerId)
+const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
 
 const fetchOrder = async () => {

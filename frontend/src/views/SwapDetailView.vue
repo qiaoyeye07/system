@@ -10,19 +10,19 @@
         <div class="info-grid">
           <span>订单编号：{{ order.orderNo }}</span>
           <span>状态：<OrderStatusTag :status="order.status" /></span>
-          <span>发起方：{{ order.buyer?.username }}</span>
-          <span>接收方：{{ order.seller?.username }}</span>
+          <span>发起方：{{ order.buyerName }}</span>
+          <span>接收方：{{ order.sellerName }}</span>
         </div>
       </div>
       <div class="swap-items">
         <div class="swap-item">
-          <h4>{{ order.buyer?.username }} 提供</h4>
-          <p>{{ order.swapProduct?.title || '交换商品' }}</p>
+          <h4>{{ order.buyerName }} 提供</h4>
+          <p>{{ order.swapProductTitle || '交换商品' }}</p>
         </div>
         <div class="swap-arrow">⇄</div>
         <div class="swap-item">
-          <h4>{{ order.seller?.username }} 提供</h4>
-          <p>{{ order.product?.title }}</p>
+          <h4>{{ order.sellerName }} 提供</h4>
+          <p>{{ order.productTitle }}</p>
         </div>
       </div>
       <div v-if="order.swapNote" class="detail-card">
@@ -99,8 +99,8 @@ const ratingScore = ref(5)
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
-const isBuyer = computed(() => user?.id === order.value?.buyer?.id)
-const isSeller = computed(() => user?.id === order.value?.seller?.id)
+const isBuyer = computed(() => user?.id === order.value?.buyerId)
+const isSeller = computed(() => user?.id === order.value?.sellerId)
 const isParticipant = computed(() => isBuyer.value || isSeller.value)
 
 const showMsg = (text, type = 'success') => { msg.value = text; msgType.value = type; setTimeout(() => msg.value = '', 3000) }
