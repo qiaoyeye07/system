@@ -296,6 +296,35 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse withdrawSwap(Long buyerId, Long orderId) {
+        Order order = getSwapOrder(orderId, buyerId, true);
+        validateStatus(order, "PENDING_CONFIRM", "撤回交换");
+
+        order.setStatus("REJECTED");
+        orderRepository.save(order);
+        createLog(order, order.getBuyer(), ActionType.REJECT_SWAP, "PENDING_CONFIRM", "REJECTED",
+                "买家撤回交换提议");
+
+        return toResponse(order);
+    }
+
+    @Transactional
+    public void cancelSwapOrder(Long userId, Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyer().getId().equals(userId) && !order.getSeller().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        String oldStatus = order.getStatus();
+        order.setStatus("CANCELLED");
+        orderRepository.save(order);
+        createLog(order, null, ActionType.CANCEL, oldStatus, "CANCELLED",
+                "交换取消：" + (reason != null ? reason : ""));
+    }
+
+    @Transactional
     public OrderResponse swapShip(Long userId, Long orderId, String logisticsInfo) {
         Order order = getSwapOrder(orderId, userId, null);
         validateStatus(order, "CONFIRMED", "发货");

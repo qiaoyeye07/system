@@ -5,6 +5,8 @@ import com.fleamarket.dto.request.*;
 import com.fleamarket.dto.response.ApiResponse;
 import com.fleamarket.dto.response.OrderLogResponse;
 import com.fleamarket.dto.response.OrderResponse;
+import com.fleamarket.exception.BusinessException;
+import com.fleamarket.exception.ErrorCode;
 import com.fleamarket.security.SecurityUtils;
 import com.fleamarket.service.OrderService;
 import jakarta.validation.Valid;
@@ -26,73 +28,73 @@ public class OrderController {
     // ==================== 现金订单 ====================
 
     @PostMapping("/orders")
-    public ApiResponse<OrderResponse> create(@RequestParam Long productId) {
+    public ApiResponse<OrderResponse> create(@Valid @RequestBody CreateOrderRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        OrderResponse order = orderService.createCashOrder(userId, productId);
+        OrderResponse order = orderService.createCashOrder(userId, request.getProductId());
         return ApiResponse.success("下单成功，请尽快完成付款", order);
     }
 
-    @PutMapping("/orders/{id}/pay")
+    @PostMapping("/orders/{id}/pay")
     public ApiResponse<OrderResponse> pay(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.pay(userId, id);
         return ApiResponse.success("付款成功，等待卖家发货", order);
     }
 
-    @PutMapping("/orders/{id}/ship")
+    @PostMapping("/orders/{id}/ship")
     public ApiResponse<OrderResponse> ship(@PathVariable Long id,
-                                            @Valid @RequestBody ShipRequest request) {
+                                           @Valid @RequestBody ShipRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.ship(userId, id, request.getLogisticsInfo());
         return ApiResponse.success("发货成功，等待买家收货", order);
     }
 
-    @PutMapping("/orders/{id}/receive")
+    @PostMapping("/orders/{id}/receive")
     public ApiResponse<OrderResponse> receive(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.receive(userId, id);
         return ApiResponse.success("收货成功，交易即将完成", order);
     }
 
-    @PutMapping("/orders/{id}/cancel")
+    @PostMapping("/orders/{id}/cancel")
     public ApiResponse<OrderResponse> cancelByBuyer(@PathVariable Long id,
-                                                      @Valid @RequestBody CancelOrderRequest request) {
+                                                     @Valid @RequestBody CancelOrderRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.cancelByBuyer(userId, id, request.getReason());
         return ApiResponse.success("取消操作已提交", order);
     }
 
-    @PutMapping("/orders/{id}/seller-cancel")
+    @PostMapping("/orders/{id}/seller-cancel")
     public ApiResponse<OrderResponse> sellerCancel(@PathVariable Long id,
-                                                     @Valid @RequestBody CancelOrderRequest request) {
+                                                    @Valid @RequestBody CancelOrderRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.sellerCancel(userId, id, request.getReason());
         return ApiResponse.success("订单已取消", order);
     }
 
-    @PutMapping("/orders/{id}/agree-cancel")
+    @PostMapping("/orders/{id}/agree-cancel")
     public ApiResponse<OrderResponse> sellerAgreeCancel(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.sellerAgreeCancel(userId, id);
         return ApiResponse.success("已同意取消，订单已取消", order);
     }
 
-    @PutMapping("/orders/{id}/refund")
+    @PostMapping("/orders/{id}/refund")
     public ApiResponse<OrderResponse> requestRefund(@PathVariable Long id,
-                                                      @Valid @RequestBody RefundRequest request) {
+                                                     @Valid @RequestBody RefundRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.requestRefund(userId, id, request.getReason());
         return ApiResponse.success("退款申请已提交", order);
     }
 
-    @PutMapping("/orders/{id}/agree-refund")
+    @PostMapping("/orders/{id}/refund/agree")
     public ApiResponse<OrderResponse> sellerAgreeRefund(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.sellerAgreeRefund(userId, id);
         return ApiResponse.success("已同意退款，订单已取消", order);
     }
 
-    @PutMapping("/orders/{id}/reject-refund")
+    @PostMapping("/orders/{id}/refund/reject")
     public ApiResponse<OrderResponse> sellerRejectRefund(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.sellerRejectRefund(userId, id);
@@ -101,37 +103,51 @@ public class OrderController {
 
     // ==================== 以物易物 ====================
 
-    @PostMapping("/swap-orders")
-    public ApiResponse<OrderResponse> createSwap(@RequestParam Long productId,
-                                                   @Valid @RequestBody CreateSwapRequest request) {
+    @PostMapping("/swap")
+    public ApiResponse<OrderResponse> createSwap(@Valid @RequestBody CreateSwapRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        OrderResponse order = orderService.createSwapOrder(userId, productId, request);
+        OrderResponse order = orderService.createSwapOrder(userId, request.getProductId(), request);
         return ApiResponse.success("交换提议已发起，等待卖家确认", order);
     }
 
-    @PutMapping("/swap-orders/{id}/agree")
+    @PostMapping("/swap/{id}/agree")
     public ApiResponse<OrderResponse> agreeSwap(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.agreeSwap(userId, id);
         return ApiResponse.success("已同意交换，双方商品已下架，请尽快发货", order);
     }
 
-    @PutMapping("/swap-orders/{id}/reject")
+    @PostMapping("/swap/{id}/reject")
     public ApiResponse<OrderResponse> rejectSwap(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.rejectSwap(userId, id);
         return ApiResponse.success("已拒绝交换提议", order);
     }
 
-    @PutMapping("/swap-orders/{id}/ship")
+    @PostMapping("/swap/{id}/withdraw")
+    public ApiResponse<OrderResponse> withdrawSwap(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.withdrawSwap(userId, id);
+        return ApiResponse.success("已撤回交换提议", order);
+    }
+
+    @PostMapping("/swap/{id}/cancel")
+    public ApiResponse<OrderResponse> cancelSwap(@PathVariable Long id,
+                                                  @Valid @RequestBody CancelOrderRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        orderService.cancelSwapOrder(userId, id, request.getReason());
+        return ApiResponse.success("交换已取消", orderService.getOrderDetail(userId, id));
+    }
+
+    @PostMapping("/swap/{id}/ship")
     public ApiResponse<OrderResponse> swapShip(@PathVariable Long id,
-                                                 @Valid @RequestBody ShipRequest request) {
+                                                @Valid @RequestBody ShipRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.swapShip(userId, id, request.getLogisticsInfo());
         return ApiResponse.success("发货成功", order);
     }
 
-    @PutMapping("/swap-orders/{id}/receive")
+    @PostMapping("/swap/{id}/receive")
     public ApiResponse<OrderResponse> swapReceive(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.swapReceive(userId, id);
@@ -151,7 +167,7 @@ public class OrderController {
         return ApiResponse.success(orderService.getOrderLogs(id));
     }
 
-    @GetMapping("/my/orders")
+    @GetMapping({"/my/orders", "/orders"})
     public ApiResponse<Page<OrderResponse>> listMyOrders(
             @RequestParam(defaultValue = "CASH") String orderType,
             @RequestParam(required = false) String status,
@@ -169,5 +185,31 @@ public class OrderController {
             orders = orderService.listBuyOrders(userId, type, status, pageable);
         }
         return ApiResponse.success(orders);
+    }
+
+    // ==================== 交换查询 ====================
+
+    @GetMapping("/swap")
+    public ApiResponse<Page<OrderResponse>> listMySwaps(
+            @RequestParam(defaultValue = "buy") String role,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<OrderResponse> orders;
+        if ("sell".equals(role)) {
+            orders = orderService.listSellOrders(userId, OrderType.SWAP, status, pageable);
+        } else {
+            orders = orderService.listBuyOrders(userId, OrderType.SWAP, status, pageable);
+        }
+        return ApiResponse.success(orders);
+    }
+
+    @GetMapping("/swap/{id}")
+    public ApiResponse<OrderResponse> getSwapDetail(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.success(orderService.getOrderDetail(userId, id));
     }
 }
