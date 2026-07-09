@@ -11,14 +11,19 @@
         </div>
         <div class="form-group">
           <label>密码 <span class="required">*</span></label>
-          <input v-model="form.password" type="password" placeholder="8-128个字符"
-            :class="{ 'input-error': errors.password }" required />
+          <div class="password-wrap">
+            <input v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="8-128个字符"
+              :class="{ 'input-error': errors.password }" required />
+            <span class="pwd-toggle" @click="showPwd = !showPwd">{{ showPwd ? '🙈' : '👁' }}</span>
+          </div>
           <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
         </div>
         <div class="form-group">
           <label>确认密码 <span class="required">*</span></label>
-          <input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码"
-            :class="{ 'input-error': errors.confirmPassword }" required />
+          <div class="password-wrap">
+            <input v-model="form.confirmPassword" :type="showPwd ? 'text' : 'password'" placeholder="请再次输入密码"
+              :class="{ 'input-error': errors.confirmPassword }" required />
+          </div>
           <p v-if="errors.confirmPassword" class="field-error">{{ errors.confirmPassword }}</p>
         </div>
         <div v-if="errorMsg" class="error-tip">{{ errorMsg }}</div>
@@ -30,19 +35,21 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, reactive, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { authAPI } from '../api/modules.js'
 import { useUserStore } from '../store/user.js'
 
-import { ref, reactive, computed, watch } from 'vue'
-
-const router = useRouter()
 const route = useRoute()
 const store = useUserStore()
 const loading = ref(false)
 const errorMsg = ref('')
+const showPwd = ref(false)
 const form = reactive({ username: '', password: '', confirmPassword: '' })
+
+// Clear API error when user types
+watch(() => form.username, () => { errorMsg.value = '' })
+watch(() => form.password, () => { errorMsg.value = '' })
 
 // Real-time field errors
 const errors = reactive({ username: '', password: '', confirmPassword: '' })
@@ -85,7 +92,7 @@ const handleRegister = async () => {
       username: loginRes.data.username,
       role: loginRes.data.role
     })
-    router.push(route.query.redirect || '/')
+    window.location.href = route.query.redirect || '/'
   } catch (e) {
     errorMsg.value = e?.message || '注册失败，请重试'
   } finally {
@@ -102,6 +109,9 @@ const handleRegister = async () => {
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #333; }
 .required { color: #ff4d4f; }
 .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 36px; }
+.pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; font-size: 16px; }
 .form-group input:focus { border-color: #1890ff; outline: none; }
 .error-tip { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
 .field-error { color: #ff4d4f; font-size: 12px; margin-top: 4px; }
