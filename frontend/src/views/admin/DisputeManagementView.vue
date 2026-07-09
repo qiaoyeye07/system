@@ -21,8 +21,8 @@
       <div class="modal-card" style="width:600px">
         <h4>纠纷详情 — {{ currentDispute?.orderNo }}</h4>
         <div v-if="disputeDetail">
-          <p>买家：{{ disputeDetail.buyerName }} | 卖家：{{ disputeDetail.sellerName }}</p>
-          <p>商品：{{ disputeDetail.productTitle }} | 金额：¥{{ disputeDetail.amount?.toFixed(2) }}</p>
+          <p>买家：{{ disputeDetail.buyer?.username }} | 卖家：{{ disputeDetail.seller?.username }}</p>
+          <p>商品：{{ disputeDetail.product?.title }} | 金额：¥{{ disputeDetail.amount?.toFixed(2) }}</p>
           <p>退款原因：{{ disputeDetail.refundReason }}</p>
           <div class="form-group" style="margin-top:16px">
             <label>裁定 *</label>

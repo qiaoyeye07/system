@@ -81,12 +81,6 @@ public class AdminController {
                 orderService.getOrderById(orderId)));
     }
 
-    @GetMapping("/disputes/{orderId}")
-    public ApiResponse<OrderResponse> getDisputeDetail(@PathVariable Long orderId) {
-        return ApiResponse.success(orderService.toResponse(
-                orderService.getOrderById(orderId)));
-    }
-
     // ==================== 举报管理 ====================
 
     @GetMapping("/reports")

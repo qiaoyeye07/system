@@ -2,10 +2,12 @@ package com.fleamarket.component;
 
 import com.fleamarket.domain.Order;
 import com.fleamarket.domain.OrderLog;
+import com.fleamarket.domain.User;
 import com.fleamarket.domain.enums.ActionType;
 import com.fleamarket.domain.enums.OrderType;
 import com.fleamarket.repository.OrderLogRepository;
 import com.fleamarket.repository.OrderRepository;
+import com.fleamarket.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,12 +24,15 @@ public class OrderAutoCompleteScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderLogRepository orderLogRepository;
+    private final UserRepository userRepository;
 
     /** 每整点执行，自动完成收货超3天的订单 */
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void autoCompleteReceivedOrders() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(3);
+        User systemUser = userRepository.findById(1L).orElse(null);
+        if (systemUser == null) return;
 
         List<Order> receivedOrders = orderRepository
                 .findByStatusAndOrderType("RECEIVED", OrderType.CASH);
@@ -37,15 +42,15 @@ public class OrderAutoCompleteScheduler {
                 order.setStatus("COMPLETED");
                 orderRepository.save(order);
 
-                OrderLog log = OrderLog.builder()
+                OrderLog orderLog = OrderLog.builder()
                         .order(order)
-                        .operator(null)
+                        .operator(systemUser)
                         .actionType(ActionType.AUTO_COMPLETE)
                         .oldStatus("RECEIVED")
                         .newStatus("COMPLETED")
                         .detail("系统自动完成（收货超3天）")
                         .build();
-                orderLogRepository.save(log);
+                orderLogRepository.save(orderLog);
 
                 log.info("Auto-completed order: {}", order.getOrderNo());
             }
