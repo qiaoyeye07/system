@@ -22,14 +22,14 @@ set "DB_PASSWORD=MySql_123456"
 set /p DB_PASSWORD="  MySQL root password [MySql_123456]: "
 
 :: --- Write .env -------------------------------------------------
-echo # Flea Market environment config > .env
-echo # Created by setup.bat >> .env
-echo DB_PASSWORD=%DB_PASSWORD% >> .env
-echo DB_HOST=localhost >> .env
-echo DB_PORT=3306 >> .env
-echo DB_NAME=flea_market >> .env
-echo DB_USER=root >> .env
-echo JWT_SECRET=flea-market-jwt-secret-change-in-production >> .env
+(echo # Flea Market environment config
+echo # Created by setup.bat
+echo DB_PASSWORD=%DB_PASSWORD%
+echo DB_HOST=localhost
+echo DB_PORT=3306
+echo DB_NAME=flea_market
+echo DB_USER=root
+echo JWT_SECRET=flea-market-jwt-secret-change-in-production) > .env
 
 echo.
 echo  [OK] .env created.
