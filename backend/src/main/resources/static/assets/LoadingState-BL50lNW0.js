@@ -1,1 +1,0 @@
-import{_ as a,o as t,c as n,a as s}from"./index-CBMhahrR.js";const o={},c={class:"loading-state"};function r(_,e){return t(),n("div",c,[...e[0]||(e[0]=[s("div",{class:"spinner"},null,-1),s("p",null,"加载中...",-1)])])}const l=a(o,[["render",r],["__scopeId","data-v-591a1263"]]);export{l as L};
