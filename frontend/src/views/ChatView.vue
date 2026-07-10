@@ -397,6 +397,13 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   const c = contacts.value.find(item => Number(item.contactId) === Number(contactId) && sameProduct(item.productId, productId))
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
+  // 立刻清零红点，不需要等 API 返回
+  if (c && c.unreadCount > 0) {
+    c.unreadCount = 0
+    const params = {}; if (productId) params.productId = productId
+    chatAPI.markRead(contactId, params).catch(() => {})
+    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+  }
   await fetchMessages()
   fetchProductInfo(activeProductId.value)
 }
@@ -751,7 +758,17 @@ onMounted(() => {
 
 onActivated(() => {
   routeChatOpened.value = false
-  fetchContacts()
+  fetchContacts().then(async () => {
+    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+    // 进入聊天页后，标记所有未读对话为已读
+    for (const c of contacts.value) {
+      if (c.unreadCount > 0) {
+        const params = {}; if (c.productId) params.productId = c.productId
+        chatAPI.markRead(c.contactId, params).catch(() => {})
+      }
+    }
+    fetchContacts()
+  })
   focusUserSearchInput()
 })
 </script>
