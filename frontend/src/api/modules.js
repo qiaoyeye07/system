@@ -22,7 +22,7 @@ export const categoryAPI = {
   getAll: () => api.get('/admin/categories'),
   create: (data) => api.post('/admin/categories', data),
   update: (id, data) => api.put(`/admin/categories/${id}`, data),
-  toggleStatus: (id, data) => api.patch(`/admin/categories/${id}/status`, data)
+  toggleStatus: (id) => api.put(`/admin/categories/${id}/toggle`)
 }
 
 // 商品
