@@ -134,7 +134,9 @@ public class ProductService {
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortObj);
 
         Page<Product> page;
-        if (categoryId != null) {
+        if (categoryId != null && excludeSellerId != null) {
+            page = productRepository.findByCategoryIdAndStatusAndSellerIdNot(categoryId, ProductStatus.ACTIVE, excludeSellerId, pageRequest);
+        } else if (categoryId != null) {
             page = productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE, pageRequest);
         } else if (excludeSellerId != null) {
             page = productRepository.findByStatusAndSellerIdNot(ProductStatus.ACTIVE, excludeSellerId, pageRequest);
