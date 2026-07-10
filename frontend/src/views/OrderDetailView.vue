@@ -323,37 +323,41 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
 <style scoped>
 .order-detail-page { padding: 0 0 40px; max-width: 800px; margin: 0 auto; }
-.btn-back { background: none; border: none; color: #1890ff; font-size: 14px; margin-bottom: 16px; }
+.btn-back { background: none; border: none; color: var(--primary); font-size: 14px; margin-bottom: 16px; }
 .msg-tip { padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
-.msg-tip.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-.msg-tip.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
-.detail-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.msg-tip.success { background: rgba(122,154,126,0.1); color: var(--success); border: 1px solid rgba(122,154,126,0.3); }
+.msg-tip.error { background: rgba(194,120,120,0.1); color: var(--danger); border: 1px solid rgba(194,120,120,0.2); }
+.detail-card { background: var(--card-bg); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
 .detail-card h3, .detail-card h4 { margin-bottom: 12px; }
-.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #666; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: var(--text-secondary); }
 .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-.action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid #d9d9d9; background: #fff; }
-.btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
-.btn-danger { color: #ff4d4f !important; border-color: #ff4d4f !important; }
-.btn-delete { color: #999 !important; border-color: #d9d9d9 !important; font-size: 12px !important; padding: 4px 12px !important; }
-.refund-info { padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
-.hint { padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px; font-size: 13px; color: #1890ff; margin-bottom: 8px; }
-.dispute-info { background: #fff2f0; border-color: #ffccc7; color: #ff4d4f; }
-.refund-detail { font-size: 13px; color: #666; margin-bottom: 8px; }
+.action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid var(--border); background: var(--card-bg); }
+.btn-primary { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+.btn-danger { color: var(--danger) !important; border-color: var(--danger) !important; }
+.btn-delete { color: var(--text-muted) !important; border-color: var(--border) !important; font-size: 12px !important; padding: 4px 12px !important; }
+.refund-info { padding: 8px 12px; background: rgba(201,169,110,0.1); border: 1px solid rgba(201,169,110,0.3); border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
+.hint { padding: 8px 12px; background: rgba(139,157,131,0.1); border: 1px solid #c5cfc0; border-radius: 4px; font-size: 13px; color: var(--primary); margin-bottom: 8px; }
+.dispute-info { background: rgba(194,120,120,0.1); border-color: rgba(194,120,120,0.2); color: var(--danger); }
+.refund-detail { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
 .reason-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.reason-option { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.reason-option.selected { border-color: #1890ff; background: #e6f7ff; }
+.reason-option { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; cursor: pointer; }
+.reason-option.selected { border-color: var(--primary); background: rgba(139,157,131,0.1); }
 .reason-option input { margin: 0; }
-.custom-input { margin-top: 8px; width: 100%; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 13px; }
-.modal-desc { font-size: 13px; color: #999; margin-bottom: 12px; }
+.custom-input { margin-top: 8px; width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+.modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 420px; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; width: 420px; }
 .modal-card h4 { margin-bottom: 16px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.rated-info { font-size: 14px; color: #fa8c16; margin-bottom: 4px; }
-.rated-comment { font-size: 13px; color: #666; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.rated-info { font-size: 14px; color: var(--warning); margin-bottom: 4px; }
+.rated-comment { font-size: 13px; color: var(--text-secondary); }
+@media (max-width: 600px) { .action-buttons,.actions { flex-direction: column; }
+  .detail-layout,.admin-page { padding: 8px; }
+  button { width: 100%; }
+}
 </style>

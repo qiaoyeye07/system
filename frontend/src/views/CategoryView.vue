@@ -66,16 +66,15 @@ onMounted(() => { fetchCategories(); fetchProducts() })
 <style scoped>
 .category-page h2 { margin-bottom: 16px; }
 .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-.search-bar input { flex: 1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.search-bar input:focus { border-color: #1890ff; outline: none; }
-.search-bar button { padding: 8px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-.btn-clear { background: #fff !important; color: #666 !important; border: 1px solid #d9d9d9 !important; }
+.search-bar input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+.search-bar input:focus { border-color: var(--primary); outline: none; }
+.search-bar button { padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.btn-clear { background: var(--card-bg) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
 .cat-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.cat-nav button { padding: 6px 16px; border: 1px solid #e8e8e8; background: #fff; border-radius: 16px; font-size: 14px; cursor: pointer; }
-.cat-nav button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+.cat-nav button { padding: 6px 16px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 16px; font-size: 14px; cursor: pointer; }
+.cat-nav button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .sort-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-.sort-bar button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.sort-bar button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
-.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+.sort-bar button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 13px; cursor: pointer; }
+.sort-bar button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 </style>

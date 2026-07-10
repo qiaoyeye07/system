@@ -53,13 +53,16 @@ onMounted(() => { if (keyword.value) doSearch() })
 
 <style scoped>
 .search-bar { display: flex; gap: 12px; margin-bottom: 16px; }
-.search-bar input { flex: 1; padding: 10px 16px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.search-bar button { padding: 10px 24px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
-.btn-back { background: #fff !important; color: #333 !important; border: 1px solid #d9d9d9 !important; }
-.result-info { margin-bottom: 12px; color: #666; font-size: 14px; }
+.search-bar input { flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+.search-bar button { padding: 10px 24px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
+.btn-back { background: var(--card-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.result-info { margin-bottom: 12px; color: var(--text-secondary); font-size: 14px; }
 .sort-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-.sort-bar button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; }
-.sort-bar button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
-.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+.sort-bar button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 13px; }
+.sort-bar button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+@media (max-width: 600px) { .action-buttons,.actions { flex-direction: column; }
+  .detail-layout,.admin-page { padding: 8px; }
+  button { width: 100%; }
+}
 </style>

@@ -30,8 +30,8 @@ const selectScore = (score) => {
 
 <style scoped>
 .star-rating { display: inline-flex; align-items: center; gap: 4px; }
-.star { font-size: 20px; color: #d9d9d9; cursor: pointer; transition: color 0.2s; }
+.star { font-size: 20px; color: var(--border); cursor: pointer; transition: color 0.2s; }
 .star.readonly { cursor: default; }
 .star.filled { color: #fadb14; }
-.score-text { margin-left: 8px; font-size: 14px; color: #666; }
+.score-text { margin-left: 8px; font-size: 14px; color: var(--text-secondary); }
 </style>

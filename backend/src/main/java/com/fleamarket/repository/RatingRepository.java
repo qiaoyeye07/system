@@ -23,4 +23,6 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     @Query("SELECT COUNT(r) FROM Rating r WHERE r.ratedUser.id = :userId")
     Long countByRatedUser(@Param("userId") Long userId);
+
+    List<Rating> findByOrderId(Long orderId);
 }

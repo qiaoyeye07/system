@@ -111,22 +111,28 @@ onMounted(() => {
 
 <style scoped>
 .search-bar { display: flex; gap: 12px; margin-bottom: 20px; }
-.search-bar input { flex: 1; padding: 10px 16px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.search-bar input:focus { border-color: #1890ff; outline: none; }
-.search-bar button { padding: 10px 24px; background: #1890ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-.btn-clear { background: #fff !important; color: #666 !important; border: 1px solid #d9d9d9 !important; }
-.search-info { color: #666; font-size: 14px; margin-bottom: 16px; }
+.search-bar input { flex: 1; padding: 12px 20px; border: 2px solid #eee; border-radius: 24px; font-size: 15px; transition: all .2s; background: var(--card-bg); }
+.search-bar input:focus { border-color: var(--primary, var(--primary)); outline: none; box-shadow: 0 0 0 3px rgba(22,119,255,.08); }
+.search-bar button { padding: 10px 28px; background: var(--primary, var(--primary)); color: #fff; border: none; border-radius: 24px; font-size: 15px; font-weight: 500; }
+.search-bar button:hover { background: var(--primary-hover); }
+.btn-clear { background: var(--card-bg) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
+.btn-clear:hover { border-color: var(--text-muted) !important; }
+.sort-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.sort-bar button { padding: 6px 16px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 20px; font-size: 13px; color: var(--text-secondary); }
+.sort-bar button:hover { border-color: var(--primary, var(--primary)); color: var(--primary, var(--primary)); }
+.sort-bar button.active { background: var(--primary, var(--primary)); color: #fff; border-color: var(--primary, var(--primary)); }
+.btn-clear { background: var(--card-bg) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
+.search-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; }
 .category-tags { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 16px; background: #fff; border: 2px solid #f0f0f0; border-radius: 12px; cursor: pointer; min-width: 72px; transition: all 0.2s; }
-.cat-btn:hover { border-color: #1890ff; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(24,144,255,0.1); }
-.cat-btn.active { border-color: #1890ff; background: #e6f7ff; }
+.cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 16px; background: var(--card-bg); border: 2px solid var(--bg); border-radius: 12px; cursor: pointer; min-width: 72px; transition: all 0.2s; }
+.cat-btn:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(24,144,255,0.1); }
+.cat-btn.active { border-color: var(--primary); background: rgba(139,157,131,0.1); }
 .cat-icon { font-size: 24px; }
-.cat-btn span:last-child { font-size: 13px; color: #666; }
-.cat-btn.active span:last-child { color: #1890ff; font-weight: 600; }
+.cat-btn span:last-child { font-size: 13px; color: var(--text-secondary); }
+.cat-btn.active span:last-child { color: var(--primary); font-weight: 600; }
 .sort-bar { display: flex; gap: 8px; margin-bottom: 20px; }
-.sort-bar button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.sort-bar button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+.sort-bar button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 13px; cursor: pointer; }
+.sort-bar button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 h3 { font-size: 18px; margin-bottom: 16px; }
-.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 </style>

@@ -7,11 +7,12 @@
       <h2>{{ profile.username }} 的主页</h2>
 
       <div class="profile-card">
-        <div class="info-row"><span>用户名：</span><strong>{{ profile.username }}</strong></div>
-        <div class="info-row"><span>注册时间：</span>{{ profile.createdAt?.slice(0, 10) }}</div>
-        <div class="info-row">
-          <span>信誉：</span>
-          <strong>★ {{ profile.avgScore?.toFixed(1) || '暂无' }}（{{ profile.ratingCount || 0 }} 条评价）</strong>
+        <div class="avatar">{{ profile.username?.charAt(0) }}</div>
+        <div class="info-row"><strong>{{ profile.username }}</strong></div>
+        <div class="info-row"><span>注册于 {{ profile.createdAt?.slice(0, 10) }}</span></div>
+        <div class="info-row star-row">
+          <span>★ {{ profile.avgScore?.toFixed(1) || '暂无' }}</span>
+          <span class="count">（{{ profile.ratingCount || 0 }} 条评价）</span>
         </div>
       </div>
 
@@ -150,31 +151,33 @@ onMounted(fetchProfile)
 
 <style scoped>
 .profile-page { max-width: 900px; margin: 0 auto; }
-.btn-back { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; padding: 0 0 12px 0; }
-.btn-back:hover { color: #333; }
-.profile-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-.info-row { margin-bottom: 8px; font-size: 14px; color: #666; }
-.info-row strong { color: #333; }
-.rating-section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.btn-back { background: none; border: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; padding: 0 0 12px 0; }
+.btn-back:hover { color: var(--text); }
+.profile-card { background: var(--card-bg); border-radius: 12px; padding: 32px 24px; margin-bottom: 16px; text-align: center; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.info-row { margin-bottom: 6px; font-size: 14px; color: var(--text-secondary); }
+.info-row strong { color: var(--text); font-size: 18px; }
+.star-row { color: var(--warning); font-weight: 600; font-size: 16px; }
+.star-row .count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+.rating-section { background: var(--card-bg); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
 .rating-section h3 { margin-bottom: 12px; font-size: 18px; }
 .rating-list { display: grid; gap: 12px; }
-.rating-item { border: 1px solid #f0f0f0; border-radius: 8px; padding: 12px; }
+.rating-item { border: 1px solid var(--bg); border-radius: 8px; padding: 12px; }
 .rating-header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 14px; }
-.rating-header span { color: #999; }
-.rating-comment { margin: 8px 0 0; color: #333; line-height: 1.6; word-break: break-word; }
-.rating-order { margin-top: 6px; font-size: 13px; color: #999; }
+.rating-header span { color: var(--text-muted); }
+.rating-comment { margin: 8px 0 0; color: var(--text); line-height: 1.6; word-break: break-word; }
+.rating-order { margin-top: 6px; font-size: 13px; color: var(--text-muted); }
 .actions { margin-bottom: 16px; }
 .section-title { margin-top: 24px; }
-.btn-report { padding: 6px 16px; border: 1px solid #ff4d4f; color: #ff4d4f; background: #fff; border-radius: 4px; }
-.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 12px; }
+.btn-report { padding: 6px 16px; border: 1px solid var(--danger); color: var(--danger); background: var(--card-bg); border-radius: 4px; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 480px; max-width: calc(100vw - 32px); }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; width: 480px; max-width: calc(100vw - 32px); }
 .modal-card h4 { margin-bottom: 16px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.btn-primary { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
-@media (max-width: 900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
 </style>

@@ -170,28 +170,29 @@ onMounted(fetchCategories)
 </script>
 
 <style scoped>
-.publish-page { background: #fff; border-radius: 8px; padding: 24px; max-width: 700px; margin: 0 auto; }
-h2 { margin-bottom: 20px; }
-.msg-tip { padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
-.msg-tip.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-.msg-tip.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #333; }
-.required { color: #ff4d4f; }
+.publish-page { background: var(--card-bg); border-radius: 12px; padding: 32px; max-width: 720px; margin: 0 auto; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+h2 { margin-bottom: 28px; font-size: 22px; color: var(--text); }
+.msg-tip { padding: 10px 14px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+.msg-tip.success { background: rgba(122,154,126,0.1); color: var(--success); border: 1px solid rgba(122,154,126,0.3); }
+.msg-tip.error { background: rgba(194,120,120,0.1); color: var(--danger); border: 1px solid rgba(194,120,120,0.2); }
+.form-group { margin-bottom: 22px; }
+.form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+.required { color: var(--danger); }
 .form-group input[type="text"], .form-group input[type="number"],
-.form-group select, .form-group textarea {
-  width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px;
-}
+.form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 2px solid #eee; border-radius: 10px; font-size: 15px; transition: all .2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary, var(--primary)); outline: none; box-shadow: 0 0 0 3px rgba(22,119,255,.06); }
 .form-group textarea { resize: vertical; }
-.radio-group { display: flex; gap: 20px; }
-.radio-group label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.radio-group { display: flex; gap: 24px; }
+.radio-group label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 400; }
 .location-row { display: flex; gap: 8px; }
-.location-row select { flex: 1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.location-row select:disabled { background: #f5f5f5; color: #999; }
+.location-row select { flex: 1; padding: 10px 14px; border: 2px solid #eee; border-radius: 10px; font-size: 14px; }
+.location-row select:disabled { background: var(--bg); color: var(--text-muted); }
 .previews { display: flex; gap: 8px; margin-top: 8px; }
-.preview-img { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
-.form-actions { display: flex; gap: 12px; }
-.btn-primary { padding: 10px 32px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 15px; }
-.btn-primary:disabled { background: #91d5ff; }
-.btn-cancel { padding: 10px 32px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; font-size: 15px; }
+.preview-img { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; }
+.form-actions { display: flex; gap: 12px; margin-top: 8px; }
+.btn-primary { padding: 12px 36px; background: var(--primary, var(--primary)); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { background: #c5cfc0; cursor: not-allowed; }
+.btn-cancel { padding: 12px 36px; border: 2px solid #eee; background: var(--card-bg); border-radius: 10px; font-size: 15px; color: var(--text-secondary); }
+.btn-cancel:hover { border-color: #ccc; }
 </style>

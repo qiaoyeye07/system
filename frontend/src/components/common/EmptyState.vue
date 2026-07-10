@@ -14,7 +14,7 @@ defineEmits(['action'])
 </script>
 
 <style scoped>
-.empty-state { text-align: center; padding: 60px 20px; color: #999; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .empty-state p { margin-bottom: 16px; font-size: 14px; }
-.btn-action { padding: 8px 24px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 14px; }
+.btn-action { padding: 8px 24px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 14px; }
 </style>

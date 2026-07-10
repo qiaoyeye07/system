@@ -62,23 +62,27 @@ onMounted(fetchAll)
 <style scoped>
 .admin-page h2 { margin-bottom: 16px; }
 .add-form { display: flex; gap: 12px; margin-bottom: 16px; }
-.add-form input { padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; width: 250px; }
-.btn-primary { padding: 8px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
-.table { background: #fff; border-radius: 8px; }
+.add-form input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; width: 250px; }
+.btn-primary { padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
+.table { background: var(--card-bg); border-radius: 8px; }
 .table-header, .table-row { display: grid; grid-template-columns: 1fr 80px 120px 160px; gap: 12px; align-items: center; padding: 12px 16px; font-size: 14px; }
-.table-header { font-weight: 500; border-bottom: 1px solid #f0f0f0; color: #666; }
-.table-row { border-bottom: 1px solid #f5f5f5; }
-.text-success { color: #52c41a; }
-.text-muted { color: #999; }
+.table-header { font-weight: 500; border-bottom: 1px solid var(--bg); color: var(--text-secondary); }
+.table-row { border-bottom: 1px solid var(--bg); }
+.text-success { color: var(--success); }
+.text-muted { color: var(--text-muted); }
 .actions { display: flex; gap: 8px; }
-.actions button { padding: 4px 12px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; font-size: 12px; }
-.btn-warn { color: #fa8c16; border-color: #fa8c16 !important; }
+.actions button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 12px; }
+.btn-warn { color: var(--warning); border-color: var(--warning) !important; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 400px; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; width: 400px; }
 .modal-card h4 { margin-bottom: 16px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+@media (max-width: 600px) { .action-buttons,.actions { flex-direction: column; }
+  .detail-layout,.admin-page { padding: 8px; }
+  button { width: 100%; }
+}
 </style>

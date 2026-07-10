@@ -134,28 +134,28 @@ onMounted(fetchReports)
 <style scoped>
 .reports-page h2 { margin-bottom: 16px; }
 .filters { display: flex; gap: 4px; margin-bottom: 16px; }
-.filters button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; }
-.filters button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
-.report-item { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: #fff; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
+.filters button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 13px; }
+.filters button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.report-item { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: var(--card-bg); border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
 .report-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.target-type { color: #1890ff; font-weight: 500; min-width: 40px; }
-.target-summary { flex: 1; color: #333; font-size: 13px; }
-.reason { color: #666; }
-.time { color: #999; font-size: 12px; }
-.btn-appeal { padding: 4px 12px; border: 1px solid #1890ff; color: #1890ff; background: #fff; border-radius: 4px; font-size: 12px; }
+.target-type { color: var(--primary); font-weight: 500; min-width: 40px; }
+.target-summary { flex: 1; color: var(--text); font-size: 13px; }
+.reason { color: var(--text-secondary); }
+.time { color: var(--text-muted); font-size: 12px; }
+.btn-appeal { padding: 4px 12px; border: 1px solid var(--primary); color: var(--primary); background: var(--card-bg); border-radius: 4px; font-size: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 480px; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; width: 480px; }
 .modal-card h4 { margin-bottom: 16px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.btn-primary { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
 .detail-grid { margin-bottom: 16px; }
 .detail-item { display: flex; gap: 12px; margin-bottom: 10px; font-size: 14px; }
-.detail-label { color: #999; min-width: 70px; flex-shrink: 0; }
-.text-green { color: #52c41a; font-weight: 500; }
-.text-red { color: #ff4d4f; font-weight: 500; }
-.appeal-context { font-size: 13px; color: #999; margin-bottom: 16px; background: #fafafa; padding: 8px 12px; border-radius: 4px; }
+.detail-label { color: var(--text-muted); min-width: 70px; flex-shrink: 0; }
+.text-green { color: var(--success); font-weight: 500; }
+.text-red { color: var(--danger); font-weight: 500; }
+.appeal-context { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; background: var(--bg); padding: 8px 12px; border-radius: 4px; }
 </style>

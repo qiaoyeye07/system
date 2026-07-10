@@ -75,8 +75,7 @@ public class RatingService {
 
     @Transactional(readOnly = true)
     public List<RatingResponse> getOrderRatings(Long orderId) {
-        return ratingRepository.findAll().stream()
-                .filter(r -> r.getOrder().getId().equals(orderId))
+        return ratingRepository.findByOrderId(orderId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

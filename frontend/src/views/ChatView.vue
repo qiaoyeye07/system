@@ -94,10 +94,10 @@
                     </div>
                   </div>
                   <!-- 交换物 -->
-                  <div v-if="parseOrderCard(msg).swapProductTitle" class="card-row" style="margin-top:8px;padding-top:8px;border-top:1px dashed #e8e8e8">
+                  <div v-if="parseOrderCard(msg).swapProductTitle" class="card-row" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
                     <img v-if="parseOrderCard(msg).swapProductImage" :src="'/' + parseOrderCard(msg).swapProductImage" class="card-thumb" @load="scrollToBottomAfterRender" />
                     <div class="card-info">
-                      <strong style="color:#52c41a">⇄ {{ parseOrderCard(msg).swapProductTitle }}</strong>
+                      <strong style="color:var(--success)">⇄ {{ parseOrderCard(msg).swapProductTitle }}</strong>
                     </div>
                   </div>
                   <div class="card-actions" v-if="getOrderCardActions(msg).length">
@@ -154,7 +154,7 @@
               <StarRating v-model="ratingScore" :showText="true" />
               <div style="margin-top:12px">
                 <label style="display:block;margin-bottom:4px;font-size:14px">评价内容</label>
-                <textarea v-model="ratingComment" rows="4" maxlength="500" placeholder="写下本次交易体验..." style="width:100%;padding:8px;border:1px solid #d9d9d9;border-radius:4px;resize:vertical"></textarea>
+                <textarea v-model="ratingComment" rows="4" maxlength="500" placeholder="写下本次交易体验..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;resize:vertical"></textarea>
               </div>
               <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
                 <button class="btn-cancel" @click="showRatingModal = false">取消</button>
@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onActivated, onMounted, nextTick, watch } from 'vue'
 defineOptions({ name: 'ChatView' })
 import { useRoute, useRouter } from 'vue-router'
 import { chatAPI, reportAPI, productAPI, orderAPI, swapAPI, userAPI, ratingAPI } from '../api/modules.js'
@@ -203,7 +203,9 @@ const msgList = ref(null)
 
 const userSearchKeyword = ref('')
 const focusSearchOnReturn = ref(false)
-const routeChatKey = ref('')
+const routeChatOpened = ref(false)
+// Reset auto-open flag when route query changes
+watch(() => route.query.contactId, () => { routeChatOpened.value = false })
 // Product picker
 const showProductPicker = ref(false)
 const pickerKeyword = ref('')
@@ -220,7 +222,6 @@ const ratedOrders = ref(new Set())
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
-let syncTimer = null
 
 // 免打扰列表存 localStorage：key = `${contactId}_${productId||0}`
 const getMuteKey = (contact) => `${contact.contactId}_${contact.productId || 0}`
@@ -235,41 +236,71 @@ const sameProduct = (left, right) => {
 const isActiveContact = (contact) =>
   Number(contact.contactId) === Number(activeContact.value) && sameProduct(contact.productId, activeProductId.value)
 
-const getTotalUnread = () =>
-  contacts.value.reduce((total, contact) => total + Number(contact.unreadCount || 0), 0)
-
-const notifyUnreadChanged = (unreadCount = getTotalUnread()) => {
-  window.dispatchEvent(new CustomEvent('chat-realtime', {
-    detail: { type: 'CHAT_UNREAD_CHANGED', unreadCount }
-  }))
-}
-
-const fetchContacts = async (silent = false) => {
-  if (!silent) loadingContacts.value = true
+const fetchContacts = async () => {
+  loadingContacts.value = true
   try {
     const res = await chatAPI.getContacts()
     contacts.value = res.data || []
-    notifyUnreadChanged()
+    const contactId = route.query.contactId || route.params.contactId
+    if (contactId && !routeChatOpened.value) {
+      const targetId = Number(contactId)
+      if (!Number.isFinite(targetId) || targetId <= 0) return
+      const productId = route.query.productId ? Number(route.query.productId) : null
+      let c = contacts.value.find(item => Number(item.contactId) === targetId && sameProduct(item.productId, productId))
+      // If no existing conversation, create a placeholder so chat can start immediately
+      if (!c) {
+        c = {
+          contactId: targetId,
+          contactName: route.query.contactName || `用户${targetId}`,
+          productId: productId || undefined,
+          productTitle: '',
+          lastMessage: '',
+          lastMessageTime: null,
+          unreadCount: 0
+        }
+        contacts.value.unshift(c)
+      }
+      routeChatOpened.value = true
+      await openChat(c.contactId, c.productId, c.contactName)
+      // Auto-send product card if came from product detail page
+      if (route.query.sendCard === 'true' && route.query.productId) {
+        const pid = Number(route.query.productId)
+        if (pid > 0) {
+          try {
+            const prodRes = await productAPI.getDetail(pid)
+            const p = prodRes.data
+            await chatAPI.send({
+              receiverId: targetId,
+              productId: pid,
+              content: p?.title || `商品 #${pid}`,
+              messageType: 'PRODUCT_CARD',
+              attachmentUrl: p?.images?.split(',')[0] || ''
+            })
+            await fetchMessages()
+          } catch {}
+        }
+      }
+    }
   } catch (e) {
-    if (!silent) contacts.value = []
+    contacts.value = []
   } finally {
-    if (!silent) loadingContacts.value = false
+    loadingContacts.value = false
   }
 }
 
-const fetchMessages = async (silent = false) => {
+const fetchMessages = async () => {
   if (!activeContact.value) return
-  if (!silent) loadingMessages.value = true
+  loadingMessages.value = true
   try {
     const params = {}
     if (activeProductId.value) params.productId = activeProductId.value
     const res = await chatAPI.getMessages(activeContact.value, params)
     messages.value = (res.data?.content || []).reverse()
   } catch (e) {
-    if (!silent) messages.value = []
+    messages.value = []
   } finally {
-    if (!silent) loadingMessages.value = false
-    if (!silent) await scrollToBottomAfterRender()
+    loadingMessages.value = false
+    await scrollToBottomAfterRender()
   }
 }
 
@@ -300,7 +331,6 @@ const handleDeleteConversation = async () => {
     contacts.value = contacts.value.filter(item =>
       !(Number(item.contactId) === Number(c.contactId) && sameProduct(item.productId, c.productId))
     )
-    notifyUnreadChanged()
     if (isActiveContact(c)) {
       activeContact.value = null
       activeContactName.value = ''
@@ -354,92 +384,6 @@ const goToUserProfile = async () => {
   }
 }
 
-const getRouteChatTarget = () => {
-  const contactId = route.query.contactId || route.params.contactId
-  if (!contactId) return null
-
-  const targetId = Number(contactId)
-  if (!Number.isFinite(targetId) || targetId <= 0) return null
-
-  const productId = route.query.productId ? Number(route.query.productId) : null
-  const safeProductId = Number.isFinite(productId) && productId > 0 ? productId : null
-  const shouldSendCard = route.query.sendCard === 'true' && !!safeProductId
-
-  return {
-    targetId,
-    productId: safeProductId,
-    contactName: route.query.contactName || `用户${targetId}`,
-    shouldSendCard,
-    key: `${targetId}_${safeProductId || 0}_${shouldSendCard ? 'card' : 'chat'}`
-  }
-}
-
-const openRouteChatFromRoute = async () => {
-  const target = getRouteChatTarget()
-  if (!target) return false
-  if (routeChatKey.value === target.key && activeContact.value) return true
-
-  let c = contacts.value.find(item =>
-    Number(item.contactId) === target.targetId && sameProduct(item.productId, target.productId)
-  )
-
-  // 没有历史消息时也先放一个临时联系人，让“联系卖家”能直接进入聊天。
-  if (!c) {
-    c = {
-      contactId: target.targetId,
-      contactName: target.contactName,
-      productId: target.productId || undefined,
-      productTitle: '',
-      lastMessage: '',
-      lastMessageTime: null,
-      unreadCount: 0
-    }
-    contacts.value.unshift(c)
-  }
-
-  routeChatKey.value = target.key
-  await openChat(c.contactId, c.productId, c.contactName)
-
-  if (target.shouldSendCard) {
-    try {
-      const prodRes = await productAPI.getDetail(target.productId)
-      const p = prodRes.data
-      await chatAPI.send({
-        receiverId: target.targetId,
-        productId: target.productId,
-        content: p?.title || `商品 #${target.productId}`,
-        messageType: 'PRODUCT_CARD',
-        attachmentUrl: p?.images?.split(',')[0] || ''
-      })
-      await fetchMessages()
-      await fetchContacts(true)
-    } catch {}
-  }
-
-  return true
-}
-
-const clearActiveConversation = () => {
-  activeContact.value = null
-  activeContactName.value = ''
-  activeProductId.value = null
-  activeProductTitle.value = ''
-  productInfo.value = null
-  messages.value = []
-  routeChatKey.value = ''
-}
-
-const handleChatRouteEntry = async () => {
-  const target = getRouteChatTarget()
-  if (target) {
-    return openRouteChatFromRoute()
-  }
-
-  clearActiveConversation()
-  await fetchContacts(true)
-  return false
-}
-
 const openChat = async (contactId, productId, fallbackName = '') => {
   activeContact.value = contactId
   activeProductId.value = productId || null
@@ -447,42 +391,7 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
   await fetchMessages()
-  // 立即通知后端已读
-  const readParams = {}
-  if (activeProductId.value) readParams.productId = activeProductId.value
-  await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
-  await fetchContacts(true)
-  notifyUnreadChanged()
   fetchProductInfo(activeProductId.value)
-}
-
-const syncChatSilently = async () => {
-  await fetchContacts(true)
-  if (activeContact.value) {
-    const lastMessageId = messages.value[messages.value.length - 1]?.id
-    await fetchMessages(true)
-    const latestMessageId = messages.value[messages.value.length - 1]?.id
-    if (latestMessageId && Number(latestMessageId) !== Number(lastMessageId)) {
-      await scrollToBottomAfterRender()
-    }
-    const readParams = {}
-    if (activeProductId.value) readParams.productId = activeProductId.value
-    await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
-    notifyUnreadChanged()
-  }
-}
-
-const startSilentSync = () => {
-  if (syncTimer) return
-  syncTimer = setInterval(() => {
-    if (!document.hidden) syncChatSilently()
-  }, 3000)
-}
-
-const stopSilentSync = () => {
-  if (!syncTimer) return
-  clearInterval(syncTimer)
-  syncTimer = null
 }
 
 const sendMessage = async () => {
@@ -517,7 +426,7 @@ const sendMessage = async () => {
     if (res.data) messages.value.push(res.data)
     newMsg.value = ''
     shouldRefocus = true
-    await fetchContacts(true)
+    await fetchContacts()
     await scrollToBottomAfterRender()
   } catch (e) {
     alert(e?.message || '发送失败')
@@ -803,62 +712,7 @@ const sendProductCard = async (p) => {
     pickerProducts.value = []
     pickerSearched.value = false
     await fetchMessages()
-    await fetchContacts(true)
   } catch (e) { alert(e?.message || '发送失败') }
-}
-
-const handleRealtimeEvent = async (browserEvent) => {
-  const event = browserEvent.detail || {}
-  if (event.type === 'MESSAGE_NEW') {
-    await handleIncomingMessage(event.data)
-  } else if (event.type === 'MESSAGE_READ') {
-    handleReadReceipt(event.data)
-  } else if (event.type === 'CHAT_SOCKET_CONNECTED') {
-    await fetchContacts(true)
-  }
-}
-
-const handleIncomingMessage = async (message) => {
-  const isCurrentChat =
-    Number(message.senderId) === Number(activeContact.value) &&
-    sameProduct(message.productId, activeProductId.value)
-
-  if (isCurrentChat) {
-    const exists = messages.value.some(item => Number(item.id) === Number(message.id))
-    if (!exists) messages.value.push(message)
-    await scrollToBottomAfterRender()
-
-    const readParams = {}
-    if (activeProductId.value) readParams.productId = activeProductId.value
-    await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
-    notifyUnreadChanged()
-  }
-
-  await fetchContacts(true)
-}
-
-const handleReadReceipt = (data) => {
-  const readerId = Number(data.readerId)
-  const productId = data.productId ? Number(data.productId) : null
-  const readMessageIds = new Set((data.messageIds || []).map(id => Number(id)))
-
-  messages.value = messages.value.map(message => {
-    const matchedById = readMessageIds.size > 0 && readMessageIds.has(Number(message.id))
-    const matchedByConversation =
-      Number(message.senderId) === Number(myId) &&
-      Number(message.receiverId) === readerId &&
-      sameProduct(message.productId, productId)
-    const shouldMarkRead = matchedById || (readMessageIds.size === 0 && matchedByConversation)
-    return shouldMarkRead ? { ...message, isRead: true } : message
-  })
-
-  contacts.value = contacts.value.map(contact => {
-    const shouldMarkRead =
-      Number(contact.contactId) === readerId &&
-      sameProduct(contact.productId, productId) &&
-      contact.lastMessageIsMine
-    return shouldMarkRead ? { ...contact, lastMessageIsRead: true } : contact
-  })
 }
 
 const reportMessage = (msg) => {
@@ -882,135 +736,116 @@ const formatMessageTime = (value) => {
   return String(value).replace('T', ' ').slice(5, 16)
 }
 
-onMounted(async () => {
-  await fetchContacts()
-  await handleChatRouteEntry()
+onMounted(() => {
+  fetchContacts()
   focusUserSearchInput()
-  window.addEventListener('chat-realtime', handleRealtimeEvent)
-  startSilentSync()
 })
 
-onActivated(async () => {
+onActivated(() => {
+  routeChatOpened.value = false
+  fetchContacts()
   focusUserSearchInput()
-  await handleChatRouteEntry()
-  startSilentSync()
 })
-
-onDeactivated(() => {
-  stopSilentSync()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('chat-realtime', handleRealtimeEvent)
-  stopSilentSync()
-})
-
-watch(
-  () => route.fullPath,
-  async () => {
-    await handleChatRouteEntry()
-  }
-)
 </script>
 
 <style scoped>
 .chat-page { height: calc(100vh - 160px); overflow: hidden; }
 .chat-layout { display: grid; grid-template-columns: 280px 1fr; height: 100%; gap: 16px; }
-.contact-panel { background: #fff; border-radius: 8px; padding: 16px; overflow-y: auto; }
+.contact-panel { background: var(--card-bg); border-radius: 8px; padding: 16px; overflow-y: auto; }
 .contact-panel h3 { margin-bottom: 8px; font-size: 16px; }
 .user-search { display: flex; gap: 6px; margin-bottom: 12px; }
-.user-search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; }
-.user-search button { padding: 4px 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 12px; white-space: nowrap; }
-.user-search button:disabled { background: #91d5ff; }
+.user-search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+.user-search button { padding: 4px 10px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+.user-search button:disabled { background: #c5cfc0; }
 .contact-item { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; }
-.contact-item:hover, .contact-item.active { background: #e6f7ff; }
+.contact-item:hover, .contact-item.active { background: rgba(139,157,131,0.1); }
 .contact-item.muted { opacity: 0.6; }
 .contact-info { min-width: 0; }
 .contact-info strong { display: block; font-size: 14px; }
-.contact-product { display: block; max-width: 160px; margin-top: 3px; color: #1890ff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-product { display: block; max-width: 160px; margin-top: 3px; color: var(--primary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .muted-tag { display: inline-block; margin-left: 6px; padding: 0 4px; font-size: 10px; color: #faad14; border: 1px solid #faad14; border-radius: 2px; vertical-align: middle; }
-.last-msg { font-size: 12px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; margin-top: 4px; }
-.read-tag { font-size: 10px; color: #bbb; margin-left: 8px; white-space: nowrap; }
-.read-tag.read { color: #52c41a; }
+.last-msg { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; margin-top: 4px; }
+.read-tag { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+.read-tag.read { color: var(--success); }
 .contact-meta { text-align: right; flex: 0 0 auto; }
-.time { font-size: 11px; color: #999; }
-.badge { display: inline-block; background: #ff4d4f; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 10px; margin-top: 4px; }
-.chat-panel { background: #fff; border-radius: 8px; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.chat-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; gap: 8px; align-items: center; }
+.time { font-size: 11px; color: var(--text-muted); }
+.badge { display: inline-block; background: var(--danger); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 10px; margin-top: 4px; }
+.chat-panel { background: var(--card-bg); border-radius: 8px; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.chat-header { padding: 12px 16px; border-bottom: 1px solid var(--bg); display: flex; gap: 8px; align-items: center; }
 .contact-name-link { cursor: pointer; }
 .contact-name-link:hover { text-decoration: underline; }
-.product-tag { font-size: 12px; color: #1890ff; background: #e6f7ff; padding: 2px 8px; border-radius: 4px; }
-.btn-refresh { margin-left: auto; background: none; border: 1px solid #d9d9d9; padding: 2px 12px; border-radius: 4px; font-size: 12px; color: #666; }
-.product-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
-.product-bar:hover { background: #fafafa; }
+.product-tag { font-size: 12px; color: var(--primary); background: rgba(139,157,131,0.1); padding: 2px 8px; border-radius: 4px; }
+.btn-refresh { margin-left: auto; background: none; border: 1px solid var(--border); padding: 2px 12px; border-radius: 4px; font-size: 12px; color: var(--text-secondary); }
+.product-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--bg); cursor: pointer; transition: background 0.2s; }
+.product-bar:hover { background: var(--bg); }
 .product-bar-img { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
 .product-bar-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .product-bar-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.product-bar-price { font-size: 16px; color: #ff4d4f; font-weight: bold; }
-.product-bar-btn { flex-shrink: 0; padding: 6px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.product-bar-btn:hover { background: #40a9ff; }
+.product-bar-price { font-size: 16px; color: var(--danger); font-weight: bold; }
+.product-bar-btn { flex-shrink: 0; padding: 6px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.product-bar-btn:hover { background: var(--primary-hover); }
 .message-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .message { max-width: 70%; align-self: flex-start; }
 .message.mine { align-self: flex-end; }
 .msg-content { padding: 10px 14px; border-radius: 12px; font-size: 14px; word-break: break-word; }
-.message:not(.mine) .msg-content { background: #f0f0f0; }
-.message.mine .msg-content { background: #1890ff; color: #fff; }
-.msg-meta { display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 11px; color: #999; }
-.msg-status { font-size: 11px; color: #bbb; }
-.msg-status.read { color: #52c41a; }
-.btn-report-msg { background: none; border: none; color: #999; font-size: 11px; cursor: pointer; padding: 0; }
-.btn-report-msg:hover { color: #ff4d4f; }
-.chat-input { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid #f0f0f0; }
-.chat-input input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.chat-input button { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
-.chat-input button:disabled { background: #91d5ff; }
-.btn-attach { background: #f0f0f0 !important; color: #333 !important; padding: 8px 12px !important; }
-.img-preview { padding: 8px 16px; border-top: 1px solid #f0f0f0; display:flex; align-items:center; gap:8px; }
+.message:not(.mine) .msg-content { background: var(--bg); }
+.message.mine .msg-content { background: var(--primary); color: #fff; }
+.msg-meta { display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+.msg-status { font-size: 11px; color: var(--text-muted); }
+.msg-status.read { color: var(--success); }
+.btn-report-msg { background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 0; }
+.btn-report-msg:hover { color: var(--danger); }
+.chat-input { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--bg); }
+.chat-input input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+.chat-input button { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
+.chat-input button:disabled { background: #c5cfc0; }
+.btn-attach { background: var(--bg) !important; color: var(--text) !important; padding: 8px 12px !important; }
+.img-preview { padding: 8px 16px; border-top: 1px solid var(--bg); display:flex; align-items:center; gap:8px; }
 .img-preview img { max-height: 100px; border-radius: 4px; }
 .img-preview button { background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; }
 .msg-img { max-width: 200px; max-height: 260px; border-radius: 8px; cursor: pointer; }
 .msg-video { max-width: 280px; max-height: 320px; border-radius: 8px; }
 .video-preview { max-height: 150px; border-radius: 4px; }
-.msg-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 14px; cursor: pointer; min-width: 180px; }
-.msg-card:hover { border-color: #1890ff; }
-.card-label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; }
+.msg-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; cursor: pointer; min-width: 180px; }
+.msg-card:hover { border-color: var(--primary); }
+.card-label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 .card-row { display: flex; align-items: center; gap: 8px; }
 .card-thumb { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; }
 .order-card { cursor: default; min-width: 220px; }
-.order-card:hover { border-color: #e8e8e8; }
+.order-card:hover { border-color: var(--border); }
 .card-info { display: flex; flex-direction: column; gap: 2px; }
-.card-price { color: #ff4d4f; font-size: 16px; font-weight: bold; }
-.card-status { font-size: 11px; color: #1890ff; }
+.card-price { color: var(--danger); font-size: 16px; font-weight: bold; }
+.card-status { font-size: 11px; color: var(--primary); }
 .card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.card-actions button { padding: 5px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid #d9d9d9; background: #fff; }
-.card-btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
-.card-btn-danger { background: #fff !important; color: #ff4d4f !important; border-color: #ff4d4f !important; }
-.card-btn-disabled { background: #f5f5f5 !important; color: #bbb !important; border-color: #d9d9d9 !important; cursor: not-allowed !important; }
-.card-btn-default { color: #333; }
+.card-actions button { padding: 5px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--card-bg); }
+.card-btn-primary { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+.card-btn-danger { background: var(--card-bg) !important; color: var(--danger) !important; border-color: var(--danger) !important; }
+.card-btn-disabled { background: var(--bg) !important; color: var(--text-muted) !important; border-color: var(--border) !important; cursor: not-allowed !important; }
+.card-btn-default { color: var(--text); }
 .system-msg { display: flex; justify-content: center; margin: 16px 0; }
-.system-msg-content { background: #fff7e6; border: 1px solid #ffd591; border-radius: 8px; padding: 10px 20px; text-align: center; max-width: 350px; }
+.system-msg-content { background: rgba(201,169,110,0.1); border: 1px solid rgba(201,169,110,0.3); border-radius: 8px; padding: 10px 20px; text-align: center; max-width: 350px; }
 .system-msg-icon { font-size: 20px; display: block; margin-bottom: 4px; }
 .system-msg-content p { margin: 0; font-size: 13px; color: #ad6800; }
 .system-msg .card-actions { justify-content: center; margin-top: 8px; }
 .picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display:flex; align-items:center; justify-content:center; }
-.picker-card { background: #fff; border-radius: 8px; padding: 20px; width: 420px; max-height: 70vh; display:flex; flex-direction:column; gap:12px; }
+.picker-card { background: var(--card-bg); border-radius: 8px; padding: 20px; width: 420px; max-height: 70vh; display:flex; flex-direction:column; gap:12px; }
 .picker-card h4 { margin: 0; }
-.picker-card input { flex:1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
-.btn-search { padding: 8px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.picker-card input { flex:1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+.btn-search { padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
 .picker-list { overflow-y: auto; max-height: 300px; display:flex; flex-direction:column; gap:8px; }
-.picker-item { display:flex; align-items:center; gap:10px; padding: 8px; border: 1px solid #f0f0f0; border-radius: 6px; cursor:pointer; }
-.picker-item:hover { background: #f5f5f5; }
-.picker-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: #f0f0f0; }
+.picker-item { display:flex; align-items:center; gap:10px; padding: 8px; border: 1px solid var(--bg); border-radius: 6px; cursor:pointer; }
+.picker-item:hover { background: var(--bg); }
+.picker-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--bg); }
 .picker-info { display:flex; flex-direction:column; gap:2px; }
 .picker-info strong { font-size: 14px; }
-.picker-info span { font-size: 13px; color: #ff4d4f; }
-.btn-cancel { padding: 8px 16px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
+.picker-info span { font-size: 13px; color: var(--danger); }
+.btn-cancel { padding: 8px 16px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
 .context-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; }
-.context-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); padding: 4px 0; min-width: 120px; }
+.context-menu { position: fixed; z-index: 1000; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); padding: 4px 0; min-width: 120px; }
 .context-item { padding: 8px 16px; font-size: 13px; cursor: pointer; }
-.context-item:hover { background: #f5f5f5; }
-.context-item.danger { color: #ff4d4f; }
-.context-item.danger:hover { background: #fff2f0; }
+.context-item:hover { background: var(--bg); }
+.context-item.danger { color: var(--danger); }
+.context-item.danger:hover { background: rgba(194,120,120,0.1); }
 @media (max-width: 768px) {
   .chat-layout { grid-template-columns: 1fr; }
   .contact-panel { max-height: 220px; }

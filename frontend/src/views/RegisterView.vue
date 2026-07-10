@@ -42,7 +42,7 @@
           <p v-if="errors.confirmPassword" class="field-error">{{ errors.confirmPassword }}</p>
         </div>
         <div v-if="errorMsg" class="error-tip">{{ errorMsg }}</div>
-        <button type="submit" class="btn-primary" :disabled="loading || !canSubmit">
+        <button type="submit" class="btn-reg" :disabled="loading || !canSubmit">
           {{ loading ? '注册中...' : '注册' }}
         </button>
       </form>
@@ -141,22 +141,22 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-.register-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f0f2f5; }
-.register-card { width: 420px; padding: 40px; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-.register-card h2 { text-align: center; margin-bottom: 24px; font-size: 22px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #333; }
-.required { color: #ff4d4f; }
-.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.register-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #b8c5b0 0%, #c8d3c0 30%, #a8b5a0 70%, #bcc7b4 100%); }
+.register-card { width: 440px; padding: 48px 40px; background: #faf8f5; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); }
+.register-card h2 { text-align: center; margin-bottom: 32px; font-size: 24px; color: var(--text); }
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+.required { color: var(--danger); }
+.form-group input { width: 100%; padding: 10px 14px; border: 2px solid #eee; border-radius: 10px; font-size: 15px; transition: all .2s; }
 .password-wrap { position: relative; }
 .password-wrap input { padding-right: 52px; }
-.pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; font-size: 12px; color: #1890ff; }
-.form-group input:focus { border-color: #1890ff; outline: none; }
-.error-tip { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
-.field-error { color: #ff4d4f; font-size: 12px; margin-top: 4px; }
-.input-error { border-color: #ff4d4f !important; }
-.btn-primary { width: 100%; padding: 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 16px; }
-.btn-primary:hover { background: #40a9ff; }
-.btn-primary:disabled { background: #91d5ff; cursor: not-allowed; }
-.link-text { text-align: center; margin-top: 16px; font-size: 14px; color: #999; }
+.pwd-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; font-size: 13px; color: var(--text-secondary); background: none; border: none; }
+.form-group input:focus { border-color: #11998e; outline: none; box-shadow: 0 0 0 3px rgba(17,153,142,0.1); }
+.error-tip { background: rgba(194,120,120,0.1); border: 1px solid rgba(194,120,120,0.2); color: var(--danger); padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 14px; }
+.field-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+.input-error { border-color: var(--danger) !important; }
+.btn-reg { width: 100%; padding: 12px; background: linear-gradient(135deg, #11998e, #38ef7d); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; letter-spacing: 1px; cursor: pointer; transition: all .2s; }
+.btn-reg:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(17,153,142,0.4); }
+.btn-reg:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.link-text { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
 </style>

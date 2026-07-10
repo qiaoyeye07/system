@@ -69,18 +69,18 @@ onMounted(fetchData)
 
 <style scoped>
 .swap-propose-page { max-width: 700px; margin: 0 auto; }
-.target-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+.target-card { background: var(--card-bg); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
 .target-card h4 { margin-bottom: 8px; }
 .product-list { display: flex; flex-direction: column; gap: 8px; }
-.product-option { display: flex; align-items: center; gap: 12px; padding: 12px; border: 2px solid #e8e8e8; border-radius: 8px; cursor: pointer; }
-.product-option.selected { border-color: #1890ff; background: #e6f7ff; }
+.product-option { display: flex; align-items: center; gap: 12px; padding: 12px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; }
+.product-option.selected { border-color: var(--primary); background: rgba(139,157,131,0.1); }
 .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
-.price { color: #ff4d4f; font-weight: bold; margin-left: auto; }
+.price { color: var(--danger); font-weight: bold; margin-left: auto; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
 .actions { display: flex; gap: 12px; }
-.btn-primary { padding: 10px 32px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
-.btn-primary:disabled { background: #91d5ff; cursor: not-allowed; }
-.btn-cancel { padding: 10px 32px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
+.btn-primary { padding: 10px 32px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
+.btn-primary:disabled { background: #c5cfc0; cursor: not-allowed; }
+.btn-cancel { padding: 10px 32px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
 </style>

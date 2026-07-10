@@ -125,22 +125,26 @@ onMounted(fetchReports)
 <style scoped>
 .admin-page h2 { margin-bottom: 16px; }
 .filters { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-.filters button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; }
-.filters button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+.filters button { padding: 4px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; font-size: 13px; }
+.filters button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .table-header, .table-row { display: grid; grid-template-columns: 60px 80px 1fr 1fr 80px 100px; gap: 8px; align-items: center; padding: 10px 16px; font-size: 14px; }
-.table-header { font-weight: 500; color: #666; border-bottom: 1px solid #f0f0f0; background: #fff; border-radius: 8px 8px 0 0; }
-.table-row { background: #fff; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
-.table-row:hover { background: #fafafa; }
+.table-header { font-weight: 500; color: var(--text-secondary); border-bottom: 1px solid var(--bg); background: var(--card-bg); border-radius: 8px 8px 0 0; }
+.table-row { background: var(--card-bg); border-bottom: 1px solid var(--bg); cursor: pointer; }
+.table-row:hover { background: var(--bg); }
 .table-row:last-child { border-radius: 0 0 8px 8px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; max-height: 80vh; overflow-y: auto; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; max-height: 80vh; overflow-y: auto; }
 .modal-card h4 { margin-bottom: 16px; }
 .modal-card p { margin-bottom: 6px; font-size: 14px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
 .radio-group label { display: block; margin-bottom: 4px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.btn-primary { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
+@media (max-width: 600px) { .action-buttons,.actions { flex-direction: column; }
+  .detail-layout,.admin-page { padding: 8px; }
+  button { width: 100%; }
+}
 </style>

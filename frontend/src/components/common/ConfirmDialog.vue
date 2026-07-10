@@ -26,16 +26,16 @@ defineEmits(['confirm', 'cancel'])
   display: flex; align-items: center; justify-content: center;
 }
 .confirm-dialog {
-  background: #fff; border-radius: 8px; padding: 24px; width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: var(--card-bg); border-radius: 8px; padding: 24px; width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .confirm-dialog h4 { margin-bottom: 12px; font-size: 16px; }
-.confirm-dialog p { color: #666; margin-bottom: 24px; font-size: 14px; }
+.confirm-dialog p { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel, .btn-confirm {
-  padding: 8px 20px; border-radius: 4px; border: 1px solid #d9d9d9; font-size: 14px;
-  background: #fff; color: #333;
+  padding: 8px 20px; border-radius: 4px; border: 1px solid var(--border); font-size: 14px;
+  background: var(--card-bg); color: var(--text);
 }
-.btn-confirm { background: #1890ff; color: #fff; border-color: #1890ff; }
-.btn-confirm:hover { background: #40a9ff; }
-.btn-cancel:hover { border-color: #1890ff; color: #1890ff; }
+.btn-confirm { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-confirm:hover { background: var(--primary-hover); }
+.btn-cancel:hover { border-color: var(--primary); color: var(--primary); }
 </style>

@@ -85,19 +85,19 @@ onMounted(fetchDisputes)
 
 <style scoped>
 .admin-page h2 { margin-bottom: 16px; }
-.dispute-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-.dispute-header { display: flex; gap: 24px; font-size: 14px; margin-bottom: 8px; color: #666; }
+.dispute-card { background: var(--card-bg); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.dispute-header { display: flex; gap: 24px; font-size: 14px; margin-bottom: 8px; color: var(--text-secondary); }
 .dispute-card p { font-size: 14px; margin-bottom: 8px; }
-.dispute-card button { padding: 6px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.dispute-card button { padding: 6px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; max-height: 80vh; overflow-y: auto; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; max-height: 80vh; overflow-y: auto; }
 .modal-card h4 { margin-bottom: 16px; }
 .modal-card p { margin-bottom: 8px; font-size: 14px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
+.form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
 .radio-group label { display: block; margin-bottom: 6px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.btn-primary { padding: 8px 20px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
 </style>

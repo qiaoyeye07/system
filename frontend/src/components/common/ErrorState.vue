@@ -13,7 +13,7 @@ defineEmits(['retry'])
 </script>
 
 <style scoped>
-.error-state { text-align: center; padding: 60px 20px; color: #999; }
+.error-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .error-state p { margin-bottom: 16px; font-size: 14px; }
-.btn-retry { padding: 8px 24px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 14px; }
+.btn-retry { padding: 8px 24px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 14px; }
 </style>

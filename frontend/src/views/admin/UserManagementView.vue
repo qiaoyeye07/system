@@ -40,12 +40,16 @@ onMounted(fetchUsers)
 
 <style scoped>
 .admin-page h2 { margin-bottom: 16px; }
-.table { background: #fff; border-radius: 8px; }
+.table { background: var(--card-bg); border-radius: 8px; }
 .table-header, .table-row { display: grid; grid-template-columns: 1fr 1fr 1fr 80px 80px; gap: 12px; align-items: center; padding: 12px 16px; font-size: 14px; }
-.table-header { font-weight: 500; border-bottom: 1px solid #f0f0f0; color: #666; }
-.table-row { border-bottom: 1px solid #f5f5f5; }
-.text-success { color: #52c41a; }
-.text-danger { color: #ff4d4f; }
-.btn-danger { padding: 4px 12px; border: 1px solid #ff4d4f; color: #ff4d4f; background: #fff; border-radius: 4px; font-size: 12px; }
-.btn-primary { padding: 4px 12px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 12px; }
+.table-header { font-weight: 500; border-bottom: 1px solid var(--bg); color: var(--text-secondary); }
+.table-row { border-bottom: 1px solid var(--bg); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.btn-danger { padding: 4px 12px; border: 1px solid var(--danger); color: var(--danger); background: var(--card-bg); border-radius: 4px; font-size: 12px; }
+.btn-primary { padding: 4px 12px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 12px; }
+@media (max-width: 600px) { .action-buttons,.actions { flex-direction: column; }
+  .detail-layout,.admin-page { padding: 8px; }
+  button { width: 100%; }
+}
 </style>

@@ -43,22 +43,14 @@ const timeText = computed(() => {
 </script>
 
 <style scoped>
-.product-card {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-}
-.product-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
-.card-image { width: 100%; height: 180px; overflow: hidden; background: #f0f0f0; }
-.card-image img { width: 100%; height: 100%; object-fit: cover; }
-.no-image {
-  display: flex; align-items: center; justify-content: center;
-  height: 100%; color: #999; font-size: 14px;
-}
-.card-body { padding: 12px; }
-.card-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8px; }
-.card-price { color: #ff4d4f; font-size: 18px; font-weight: bold; margin-bottom: 8px; }
-.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+.product-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all .25s ease; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.card-image { width: 100%; height: 180px; overflow: hidden; background: var(--bg); }
+.card-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.product-card:hover .card-image img { transform: scale(1.05); }
+.no-image { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 100%; color: var(--text-muted); font-size: 13px; }
+.card-body { padding: 12px 14px; }
+.card-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; color: var(--text); }
+.card-price { color: var(--danger); font-size: 18px; font-weight: bold; margin-bottom: 6px; }
+.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
 </style>

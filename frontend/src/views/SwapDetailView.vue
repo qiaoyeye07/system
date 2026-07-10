@@ -163,27 +163,27 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
 <style scoped>
 .swap-detail-page { max-width: 800px; margin: 0 auto; }
-.btn-back { background: none; border: none; color: #1890ff; font-size: 14px; margin-bottom: 16px; }
+.btn-back { background: none; border: none; color: var(--primary); font-size: 14px; margin-bottom: 16px; }
 .msg-tip { padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
-.msg-tip.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-.msg-tip.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
-.detail-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.msg-tip.success { background: rgba(122,154,126,0.1); color: var(--success); border: 1px solid rgba(122,154,126,0.3); }
+.msg-tip.error { background: rgba(194,120,120,0.1); color: var(--danger); border: 1px solid rgba(194,120,120,0.2); }
+.detail-card { background: var(--card-bg); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
 .detail-card h3, .detail-card h4 { margin-bottom: 12px; }
-.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #666; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: var(--text-secondary); }
 .swap-items { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: center; margin-bottom: 16px; }
-.swap-item { background: #fff; border-radius: 8px; padding: 20px; text-align: center; }
-.swap-arrow { font-size: 28px; color: #1890ff; }
+.swap-item { background: var(--card-bg); border-radius: 8px; padding: 20px; text-align: center; }
+.swap-arrow { font-size: 28px; color: var(--primary); }
 .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-.action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid #d9d9d9; background: #fff; }
-.btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
-.btn-danger { color: #ff4d4f !important; border-color: #ff4d4f !important; }
+.action-buttons button { padding: 8px 20px; border-radius: 4px; font-size: 14px; border: 1px solid var(--border); background: var(--card-bg); }
+.btn-primary { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+.btn-danger { color: var(--danger) !important; border-color: var(--danger) !important; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.modal-card { background: #fff; border-radius: 8px; padding: 24px; width: 420px; }
+.modal-card { background: var(--card-bg); border-radius: 8px; padding: 24px; width: 420px; }
 .modal-card h4 { margin-bottom: 16px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
-.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
-.btn-delete { color: #999 !important; border-color: #d9d9d9 !important; font-size: 12px !important; padding: 4px 12px !important; }
+.btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
+.btn-delete { color: var(--text-muted) !important; border-color: var(--border) !important; font-size: 12px !important; padding: 4px 12px !important; }
 </style>
