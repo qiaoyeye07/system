@@ -65,6 +65,14 @@
             <div v-for="msg in messages" :key="msg.id" class="message" :class="{ mine: Number(msg.senderId) === Number(myId) }">
               <div class="msg-content">
                 <img v-if="msg.messageType === 'IMAGE'" :src="msg.attachmentUrl" class="msg-img" @click="window.open(msg.attachmentUrl)" />
+                <video v-else-if="msg.messageType === 'VIDEO'" :src="msg.attachmentUrl" controls class="msg-video"></video>
+                <div v-else-if="msg.messageType === 'PRODUCT_CARD'" class="msg-card" @click="goToCardProduct(msg)">
+                  <span class="card-label">📦 分享了商品</span>
+                  <div class="card-row">
+                    <img v-if="getCardImage(msg)" :src="getCardImage(msg)" class="card-thumb" />
+                    <strong>{{ msg.content }}</strong>
+                  </div>
+                </div>
                 <template v-else>{{ msg.content }}</template>
               </div>
               <div class="msg-meta">
@@ -77,13 +85,34 @@
 
           <div class="chat-input">
             <input v-model="newMsg" type="text" placeholder="输入消息..." :disabled="sending" @keyup.enter="sendMessage" />
-            <input type="file" ref="fileInput" accept="image/*" style="display:none" @change="onFileSelected" />
-            <button class="btn-attach" :disabled="sending" @click="$refs.fileInput.click()">🖼</button>
-            <button @click="sendMessage" :disabled="sending || (!newMsg.trim() && !pendingFile)">{{ sending ? '发送中...' : '发送' }}</button>
+            <input type="file" ref="fileInput" accept="image/*,video/*" style="display:none" @change="onFilePicked" />
+            <button class="btn-attach" :disabled="sending" @click="fileInput.click()">📎</button>
+            <button class="btn-attach" :disabled="sending || !activeContact" @click="showProductPicker = true">📦</button>
+            <button @click="sendMessage" :disabled="!canSend">{{ sending ? '发送中...' : '发送' }}</button>
+          </div>
+          <!-- 商品选择弹窗 -->
+          <div v-if="showProductPicker" class="picker-overlay" @click.self="showProductPicker = false">
+            <div class="picker-card">
+              <h4>分享商品到聊天</h4>
+              <input v-model="pickerKeyword" type="text" placeholder="输入商品ID或关键词搜索..." @keyup.enter="searchProducts" />
+              <button class="btn-search" @click="searchProducts">搜索</button>
+              <div v-if="pickerProducts.length" class="picker-list">
+                <div v-for="p in pickerProducts" :key="p.id" class="picker-item" @click="sendProductCard(p)">
+                  <img v-if="p.firstImage" :src="p.firstImage" class="picker-thumb" />
+                  <div class="picker-info">
+                    <strong>{{ p.title }}</strong>
+                    <span>¥{{ p.price?.toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+              <EmptyState v-else-if="pickerSearched" text="未找到商品" />
+              <button class="btn-cancel" @click="showProductPicker = false">关闭</button>
+            </div>
           </div>
           <div v-if="pendingPreview" class="img-preview">
-            <img :src="pendingPreview" />
-            <button @click="pendingPreview='';pendingFile=null">✕</button>
+            <img v-if="pendingType === 'IMAGE'" :src="pendingPreview" />
+            <video v-else-if="pendingType === 'VIDEO'" :src="pendingPreview" controls class="video-preview" />
+            <button @click="pendingPreview='';pendingFile=null;pendingType=''">✕</button>
           </div>
         </template>
       </section>
@@ -112,13 +141,21 @@ const newMsg = ref('')
 const loadingContacts = ref(false)
 const loadingMessages = ref(false)
 const sending = ref(false)
+const canSend = computed(() => !sending.value && (newMsg.value.trim() || pendingFile.value))
 const searchingUser = ref(false)
 const pendingPreview = ref('')
 const pendingFile = ref(null)
+const pendingType = ref('')
+const fileInput = ref(null)
 const msgList = ref(null)
 
 const userSearchKeyword = ref('')
 const routeChatOpened = ref(false)
+// Product picker
+const showProductPicker = ref(false)
+const pickerKeyword = ref('')
+const pickerProducts = ref([])
+const pickerSearched = ref(false)
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -162,6 +199,24 @@ const fetchContacts = async () => {
       }
       routeChatOpened.value = true
       await openChat(c.contactId, c.productId, c.contactName)
+      // Auto-send product card if came from product detail page
+      if (route.query.sendCard === 'true' && route.query.productId) {
+        const pid = Number(route.query.productId)
+        if (pid > 0) {
+          try {
+            const prodRes = await productAPI.getDetail(pid)
+            const p = prodRes.data
+            await chatAPI.send({
+              receiverId: targetId,
+              productId: pid,
+              content: p?.title || `商品 #${pid}`,
+              messageType: 'PRODUCT_CARD',
+              attachmentUrl: p?.images?.split(',')[0] || ''
+            })
+            await fetchMessages()
+          } catch {}
+        }
+      }
     }
   } catch (e) {
     contacts.value = []
@@ -281,21 +336,26 @@ const sendMessage = async () => {
   sending.value = true
   try {
     let attachmentUrl = ''
+    let fileType = ''
     if (pendingFile.value) {
       const fd = new FormData()
       fd.append('file', pendingFile.value)
+      fd.append('type', pendingType.value)
+      fileType = pendingType.value
       const up = await chatAPI.uploadImage(fd)
       attachmentUrl = up.data?.url || ''
       pendingPreview.value = ''
       pendingFile.value = null
+      pendingType.value = ''
     }
-    const content = attachmentUrl ? '[图片]' : newMsg.value.trim()
+    const labels = { IMAGE: '[图片]', VIDEO: '[视频]' }
+    const content = attachmentUrl ? (labels[fileType] || '[文件]') : newMsg.value.trim()
     if (!content) { sending.value = false; return }
     const res = await chatAPI.send({
       receiverId: activeContact.value,
       productId: activeProductId.value,
       content,
-      messageType: attachmentUrl ? 'IMAGE' : 'TEXT',
+      messageType: attachmentUrl ? (fileType || 'IMAGE') : 'TEXT',
       attachmentUrl: attachmentUrl || undefined
     })
     if (res.data) messages.value.push(res.data)
@@ -309,17 +369,66 @@ const sendMessage = async () => {
   }
 }
 
-const onFileSelected = (e) => {
+const onFilePicked = (e) => {
   const f = e.target.files[0]
   if (!f) return
-  if (f.size > 5*1024*1024) { alert('图片不超过 5MB'); return }
+  const isVideo = f.type.startsWith('video/')
+  const max = isVideo ? 30 * 1024 * 1024 : 5 * 1024 * 1024
+  if (f.size > max) { alert('文件不超过 ' + (max/1024/1024) + 'MB'); return }
   pendingFile.value = f
+  pendingType.value = isVideo ? 'VIDEO' : 'IMAGE'
   pendingPreview.value = URL.createObjectURL(f)
-  e.target.value = ''
 }
 
 const scrollToBottom = () => {
   if (msgList.value) msgList.value.scrollTop = msgList.value.scrollHeight
+}
+
+const getCardImage = (msg) => {
+  const au = msg.attachmentUrl || ''
+  return au.split('|pid:')[0]
+}
+
+const goToCardProduct = (msg) => {
+  const pid = (msg.attachmentUrl || '').split('|pid:')[1] || msg.productId
+  if (pid && Number(pid) > 0) router.push('/product/' + Number(pid))
+}
+
+const searchProducts = async () => {
+  const kw = pickerKeyword.value.trim()
+  if (!kw) return
+  pickerSearched.value = true
+  try {
+    // Try as product ID first
+    if (/^\d+$/.test(kw)) {
+      const res = await productAPI.getDetail(Number(kw))
+      if (res.data) { pickerProducts.value = [res.data]; return }
+    }
+    // Keyword search
+    const res = await productAPI.search({ keyword: kw, size: 10 })
+    pickerProducts.value = (res.data?.content || []).map(p => ({
+      ...p,
+      firstImage: p.firstImage || (p.images?.split(',')[0] || '')
+    }))
+  } catch { pickerProducts.value = [] }
+}
+
+const sendProductCard = async (p) => {
+  if (!activeContact.value) return
+  try {
+    await chatAPI.send({
+      receiverId: activeContact.value,
+      productId: activeProductId.value,
+      content: p.title,
+      messageType: 'PRODUCT_CARD',
+      attachmentUrl: (p.firstImage || p.images?.split(',')[0] || '') + '|pid:' + p.id
+    })
+    showProductPicker.value = false
+    pickerKeyword.value = ''
+    pickerProducts.value = []
+    pickerSearched.value = false
+    await fetchMessages()
+  } catch (e) { alert(e?.message || '发送失败') }
 }
 
 const reportMessage = (msg) => {
@@ -412,6 +521,26 @@ onBeforeUnmount(() => {
 .img-preview img { max-height: 100px; border-radius: 4px; }
 .img-preview button { background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; }
 .msg-img { max-width: 200px; max-height: 260px; border-radius: 8px; cursor: pointer; }
+.msg-video { max-width: 280px; max-height: 320px; border-radius: 8px; }
+.video-preview { max-height: 150px; border-radius: 4px; }
+.msg-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 14px; cursor: pointer; min-width: 180px; }
+.msg-card:hover { border-color: #1890ff; }
+.card-label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; }
+.card-row { display: flex; align-items: center; gap: 8px; }
+.card-thumb { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; }
+.picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display:flex; align-items:center; justify-content:center; }
+.picker-card { background: #fff; border-radius: 8px; padding: 20px; width: 420px; max-height: 70vh; display:flex; flex-direction:column; gap:12px; }
+.picker-card h4 { margin: 0; }
+.picker-card input { flex:1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.btn-search { padding: 8px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; }
+.picker-list { overflow-y: auto; max-height: 300px; display:flex; flex-direction:column; gap:8px; }
+.picker-item { display:flex; align-items:center; gap:10px; padding: 8px; border: 1px solid #f0f0f0; border-radius: 6px; cursor:pointer; }
+.picker-item:hover { background: #f5f5f5; }
+.picker-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: #f0f0f0; }
+.picker-info { display:flex; flex-direction:column; gap:2px; }
+.picker-info strong { font-size: 14px; }
+.picker-info span { font-size: 13px; color: #ff4d4f; }
+.btn-cancel { padding: 8px 16px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
 .context-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; }
 .context-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); padding: 4px 0; min-width: 120px; }
 .context-item { padding: 8px 16px; font-size: 13px; cursor: pointer; }

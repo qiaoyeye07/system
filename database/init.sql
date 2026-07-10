@@ -119,6 +119,8 @@ CREATE TABLE message (
     receiver_id BIGINT NOT NULL,
     product_id BIGINT COMMENT '关联商品',
     content TEXT NOT NULL,
+    message_type VARCHAR(20) NOT NULL DEFAULT 'TEXT' COMMENT 'TEXT | IMAGE | AUDIO | VIDEO | PRODUCT_CARD',
+    attachment_url VARCHAR(500) COMMENT '附件URL',
     is_read TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_msg_conversation (sender_id, receiver_id, product_id),

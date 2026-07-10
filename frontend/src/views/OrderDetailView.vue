@@ -27,7 +27,7 @@
         <h4>操作</h4>
         <div class="action-buttons">
           <template v-if="order.status === 'PENDING_PAY' && isBuyer">
-            <button class="btn-primary" @click="doPay">付款</button>
+            <button class="btn-primary" @click="confirmPay">付款</button>
             <button class="btn-danger" @click="confirmCancel">取消订单</button>
           </template>
           <template v-if="order.status === 'PAID' && isBuyer && !order.refundReason">
@@ -56,6 +56,9 @@
           </template>
           <template v-if="order.status === 'SHIPPED' && isBuyer && !order.refundReason">
             <button class="btn-primary" @click="confirmReceive">确认收货</button>
+          </template>
+          <template v-if="order.status === 'RECEIVED' && isBuyer && !order.refundReason">
+            <p class="hint">收货后 3 天内未申请退款，订单将自动完成</p>
             <button @click="showRefundDialog = true">申请退款</button>
           </template>
           <template v-if="order.status === 'SHIPPED' && isSeller && order.refundReason && !sellerRejectedRefund">
@@ -108,7 +111,7 @@
           </div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="showShipDialog = false">取消</button>
-            <button class="btn-primary" @click="doShip">确认发货</button>
+            <button class="btn-primary" @click="confirmShip">确认发货</button>
           </div>
         </div>
       </div>
@@ -152,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { orderAPI, swapAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -218,11 +221,13 @@ const fetchOrder = async () => {
 
 const showMsg = (text, type = 'success') => { msg.value = text; msgType.value = type; setTimeout(() => msg.value = '', 3000) }
 
+const confirmPay = () => { confirmMsg.value = '确认付款 ¥' + order.value.amount?.toFixed(2) + '？'; confirmAction.value = doPay; confirmVisible.value = true }
 const doPay = async () => {
-  try { await orderAPI.pay(props.id); showMsg('付款成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  try { await orderAPI.pay(props.id); confirmVisible.value = false; showMsg('付款成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
+const confirmShip = () => { confirmMsg.value = '确认已将此商品发出？'; confirmAction.value = doShip; confirmVisible.value = true }
 const doShip = async () => {
-  try { await orderAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; showMsg('发货成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  try { await orderAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; confirmVisible.value = false; showMsg('发货成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
 }
 const confirmReceive = () => { confirmMsg.value = '确认收货后无法退回，请确认已收到货物。'; confirmAction.value = doReceive; confirmVisible.value = true }
 const doReceive = async () => {
@@ -291,7 +296,12 @@ const doDelete = async () => {
   } catch (e) { showMsg(e?.message || '删除失败', 'error') }
 }
 
-onMounted(fetchOrder)
+let timer = null
+onMounted(() => {
+  fetchOrder()
+  timer = setInterval(fetchOrder, 30000)
+})
+onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
 <style scoped>
@@ -309,6 +319,7 @@ onMounted(fetchOrder)
 .btn-danger { color: #ff4d4f !important; border-color: #ff4d4f !important; }
 .btn-delete { color: #999 !important; border-color: #d9d9d9 !important; font-size: 12px !important; padding: 4px 12px !important; }
 .refund-info { padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px; font-size: 13px; color: #d46b08; margin-bottom: 8px; }
+.hint { padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px; font-size: 13px; color: #1890ff; margin-bottom: 8px; }
 .dispute-info { background: #fff2f0; border-color: #ffccc7; color: #ff4d4f; }
 .refund-detail { font-size: 13px; color: #666; margin-bottom: 8px; }
 .reason-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }

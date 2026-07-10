@@ -33,8 +33,8 @@
         <h4>操作</h4>
         <div class="action-buttons">
           <template v-if="order.status === 'PENDING_CONFIRM' && isSeller">
-            <button class="btn-primary" @click="doAgree">同意交换</button>
-            <button class="btn-danger" @click="doReject">拒绝交换</button>
+            <button class="btn-primary" @click="confirmAgree">同意交换</button>
+            <button class="btn-danger" @click="confirmReject">拒绝交换</button>
           </template>
           <template v-if="order.status === 'PENDING_CONFIRM' && isBuyer">
             <button @click="doWithdraw">撤回提议</button>
@@ -44,7 +44,7 @@
             <button @click="doCancelSwap">申请取消</button>
           </template>
           <template v-if="order.status === 'BOTH_SHIPPED'">
-            <button class="btn-primary" @click="doReceive">确认收货</button>
+            <button class="btn-primary" @click="confirmReceive">确认收货</button>
           </template>
           <template v-if="order.status === 'COMPLETED' && isParticipant">
             <button @click="showRating = true">评价</button>
@@ -62,7 +62,7 @@
           <div class="form-group"><label>物流/自提信息 *</label><input v-model="shipInfo" type="text" /></div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="showShipDialog = false">取消</button>
-            <button class="btn-primary" @click="doShip">确认</button>
+            <button class="btn-primary" @click="confirmShip">确认</button>
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { swapAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -129,11 +129,15 @@ const fetchOrder = async () => {
   loading.value = true
   try { const res = await swapAPI.getDetail(props.id); order.value = res.data } catch (e) { error.value = e?.message } finally { loading.value = false }
 }
-const doAgree = async () => { try { await swapAPI.agree(props.id); showMsg('已同意交换'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
-const doReject = async () => { try { await swapAPI.reject(props.id); showMsg('已拒绝'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const confirmAgree = () => { confirmMsg.value = '同意交换后双方商品将下架。确认同意？'; confirmAction.value = doAgree; confirmVisible.value = true }
+const doAgree = async () => { try { await swapAPI.agree(props.id); confirmVisible.value = false; showMsg('已同意交换'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const confirmReject = () => { confirmMsg.value = '确认拒绝此交换提议？'; confirmAction.value = doReject; confirmVisible.value = true }
+const doReject = async () => { try { await swapAPI.reject(props.id); confirmVisible.value = false; showMsg('已拒绝'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doWithdraw = async () => { try { await swapAPI.withdraw(props.id); showMsg('已撤回'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
-const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
-const doReceive = async () => { try { await swapAPI.receive(props.id); showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const confirmShip = () => { confirmMsg.value = '确认已发货？'; confirmAction.value = doShip; confirmVisible.value = true }
+const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; confirmVisible.value = false; showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const confirmReceive = () => { confirmMsg.value = '确认已收到货物？收货后不可退回。'; confirmAction.value = doReceive; confirmVisible.value = true }
+const doReceive = async () => { try { await swapAPI.receive(props.id); confirmVisible.value = false; showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doCancelSwap = async () => { try { await swapAPI.cancel(props.id, { reason: '申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doRating = async () => {
   try {
@@ -149,7 +153,12 @@ const doDelete = async () => {
 }
 const handleConfirm = () => { if (confirmAction.value) confirmAction.value() }
 
-onMounted(fetchOrder)
+let timer = null
+onMounted(() => {
+  fetchOrder()
+  timer = setInterval(fetchOrder, 30000)
+})
+onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
 <style scoped>

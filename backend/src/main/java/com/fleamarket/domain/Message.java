@@ -34,7 +34,7 @@ public class Message {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "message_type", nullable = false, length = 10)
+    @Column(name = "message_type", nullable = false, length = 20)
     @Builder.Default
     private String messageType = "TEXT";
 

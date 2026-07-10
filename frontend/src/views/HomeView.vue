@@ -6,10 +6,12 @@
       <button v-if="searching" class="btn-clear" @click="clearSearch">清除</button>
     </div>
     <div class="category-tags">
-      <button :class="{ active: activeCatId === 0 }" @click="selectCategory(0)">全部</button>
-      <button v-for="cat in categories" :key="cat.id" :class="{ active: activeCatId === cat.id }" @click="selectCategory(cat.id)">
-        {{ cat.name }}
-      </button>
+      <div class="cat-btn" :class="{ active: activeCatId === 0 }" @click="selectCategory(0)">
+        <span class="cat-icon">📦</span><span>全部</span>
+      </div>
+      <div v-for="cat in categories" :key="cat.id" class="cat-btn" :class="{ active: activeCatId === cat.id }" @click="selectCategory(cat.id)">
+        <span class="cat-icon">{{ catIcons[cat.name] || '📌' }}</span><span>{{ cat.name }}</span>
+      </div>
     </div>
     <div class="sort-bar">
       <button :class="{ active: sort === 'created_at,desc' }" @click="sort = 'created_at,desc'; fetchProducts()">最新</button>
@@ -48,6 +50,7 @@ const activeCatId = ref(0)
 const sort = ref('created_at,desc')
 const loading = ref(true)
 const error = ref('')
+const catIcons = { '数码': '📱', '服饰': '👗', '家居': '🛋', '图书': '📚', '其他': '📦', '运动户外': '⚽', '美妆': '💄' }
 
 const fetchProducts = async () => {
   loading.value = true
@@ -113,10 +116,13 @@ onMounted(() => {
 .search-bar button { padding: 10px 24px; background: #1890ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .btn-clear { background: #fff !important; color: #666 !important; border: 1px solid #d9d9d9 !important; }
 .search-info { color: #666; font-size: 14px; margin-bottom: 16px; }
-.category-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.category-tags button { padding: 6px 16px; background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; color: #333; font-size: 14px; cursor: pointer; }
-.category-tags button:hover { color: #1890ff; border-color: #1890ff; }
-.category-tags button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+.category-tags { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 16px; background: #fff; border: 2px solid #f0f0f0; border-radius: 12px; cursor: pointer; min-width: 72px; transition: all 0.2s; }
+.cat-btn:hover { border-color: #1890ff; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(24,144,255,0.1); }
+.cat-btn.active { border-color: #1890ff; background: #e6f7ff; }
+.cat-icon { font-size: 24px; }
+.cat-btn span:last-child { font-size: 13px; color: #666; }
+.cat-btn.active span:last-child { color: #1890ff; font-weight: 600; }
 .sort-bar { display: flex; gap: 8px; margin-bottom: 20px; }
 .sort-bar button { padding: 4px 12px; border: 1px solid #e8e8e8; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer; }
 .sort-bar button.active { background: #1890ff; color: #fff; border-color: #1890ff; }

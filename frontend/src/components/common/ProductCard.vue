@@ -2,7 +2,7 @@
   <div class="product-card" @click="$router.push(`/product/${product.id}`)">
     <div class="card-image">
       <img v-if="firstImage" :src="firstImage" :alt="product.title" />
-      <div v-else class="no-image">暂无图片</div>
+      <div v-else class="no-image">📷<br/>暂无图片</div>
     </div>
     <div class="card-body">
       <h3 class="card-title">{{ product.title }}</h3>

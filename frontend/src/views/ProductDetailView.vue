@@ -74,6 +74,8 @@
       </div>
     </div>
 
+    <ConfirmDialog :visible="confirmBuyVisible" title="确认下单" :message="`确认购买「${product?.title}」，价格 ¥${product?.price?.toFixed(2)}？`"
+      @confirm="handleBuyConfirm" @cancel="confirmBuyVisible = false" />
     <ConfirmDialog :visible="confirmVisible" title="下架商品" message="下架后商品不再公开展示，可重新上架。确认下架吗？"
       @confirm="handleOffShelf" @cancel="confirmVisible = false" />
 
@@ -111,6 +113,7 @@ const error = ref('')
 const currentImage = ref(0)
 const showReport = ref(false)
 const confirmVisible = ref(false)
+const confirmBuyVisible = ref(false)
 const showAdminOff = ref(false)
 const adminOffReason = ref('')
 const reportForm = ref({ reason: '', description: '' })
@@ -148,13 +151,16 @@ const contactSeller = () => router.push({
   query: {
     contactId: product.value?.sellerId,
     contactName: product.value?.sellerName,
-    productId: props.id
+    productId: props.id,
+    sendCard: 'true'
   }
 })
-const buyNow = async () => {
+const buyNow = () => { confirmBuyVisible.value = true }
+const handleBuyConfirm = async () => {
   try {
     const { orderAPI } = await import('../api/modules.js')
     const res = await orderAPI.create({ productId: props.id })
+    confirmBuyVisible.value = false
     router.push(`/order/${res.data.id}`)
   } catch (e) { alert(e?.message || '下单失败') }
 }
