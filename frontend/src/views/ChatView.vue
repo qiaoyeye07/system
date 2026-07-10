@@ -819,8 +819,11 @@ const connectWebSocket = () => {
           const params = {}; if (activeProductId.value) params.productId = activeProductId.value
           chatAPI.markRead(activeContact.value, params).catch(() => {})
         }
-        refreshContactsSilent()
-        window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+        // 延迟刷新：等后端事务提交后再拉数据
+        setTimeout(() => {
+          refreshContactsSilent()
+          window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+        }, 500)
       } else if (event.type === 'MESSAGE_READ') {
         // 对方读了你的消息 → 本地立刻把 isRead 改为 true
         const ids = event.data?.messageIds || []
