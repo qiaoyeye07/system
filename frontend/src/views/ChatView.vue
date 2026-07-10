@@ -57,7 +57,8 @@
               <span class="product-bar-title">{{ productInfo.title }}</span>
               <span class="product-bar-price">¥{{ productInfo.price }}</span>
             </div>
-            <button v-if="!isProductOwner" class="product-bar-btn" @click.stop="handleProductAction">立即购买</button>
+            <button v-if="!isProductOwner && canBuyProduct" class="product-bar-btn" @click.stop="handleProductAction">去购买</button>
+            <button v-if="!isProductOwner && canSwapProduct" class="product-bar-btn swap" @click.stop="handleSwapProduct">去交换</button>
           </div>
 
           <div class="message-list" ref="msgList">
@@ -182,6 +183,8 @@ const router = useRouter()
 const contacts = ref([])
 const productInfo = ref(null)
 const isProductOwner = computed(() => productInfo.value && Number(productInfo.value.sellerId) === Number(myId))
+const canBuyProduct = computed(() => productInfo.value?.status === 'ACTIVE' && productInfo.value?.tradeMode !== 'SWAP')
+const canSwapProduct = computed(() => productInfo.value?.status === 'ACTIVE' && (productInfo.value?.tradeMode === 'SWAP' || productInfo.value?.tradeMode === 'BOTH'))
 const messages = ref([])
 const activeContact = ref(null)
 const activeContactName = ref('')
@@ -218,7 +221,7 @@ const ratingScore = ref(5)
 const ratingComment = ref('')
 const ratingOrderId = ref(null)
 const ratingRatedUserId = ref(null)
-const ratedOrders = ref(new Set())
+const ratedOrders = ref(new Set(JSON.parse(localStorage.getItem('ratedOrders') || '[]')))
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -368,6 +371,10 @@ const handleProductAction = async () => {
   }
 }
 
+const handleSwapProduct = () => {
+  if (activeProductId.value) router.push(`/swap/propose/${activeProductId.value}`)
+}
+
 const goToUserProfile = async () => {
   const username = userSearchKeyword.value.trim()
   if (!username) return
@@ -390,6 +397,13 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   const c = contacts.value.find(item => Number(item.contactId) === Number(contactId) && sameProduct(item.productId, productId))
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
+  // 立刻清零红点，不需要等 API 返回
+  if (c && c.unreadCount > 0) {
+    c.unreadCount = 0
+    const params = {}; if (productId) params.productId = productId
+    chatAPI.markRead(contactId, params).catch(() => {})
+    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+  }
   await fetchMessages()
   fetchProductInfo(activeProductId.value)
 }
@@ -672,6 +686,7 @@ const doRating = async () => {
     await ratingAPI.submit({ orderId: ratingOrderId.value, score: ratingScore.value, comment: ratingComment.value.trim() })
     showRatingModal.value = false
     ratedOrders.value.add(ratingOrderId.value)
+    localStorage.setItem('ratedOrders', JSON.stringify([...ratedOrders.value]))
     alert('评价成功')
     fetchMessages()
     fetchContacts()
@@ -743,7 +758,17 @@ onMounted(() => {
 
 onActivated(() => {
   routeChatOpened.value = false
-  fetchContacts()
+  fetchContacts().then(async () => {
+    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+    // 进入聊天页后，标记所有未读对话为已读
+    for (const c of contacts.value) {
+      if (c.unreadCount > 0) {
+        const params = {}; if (c.productId) params.productId = c.productId
+        chatAPI.markRead(c.contactId, params).catch(() => {})
+      }
+    }
+    fetchContacts()
+  })
   focusUserSearchInput()
 })
 </script>
@@ -784,6 +809,8 @@ onActivated(() => {
 .product-bar-price { font-size: 16px; color: var(--danger); font-weight: bold; }
 .product-bar-btn { flex-shrink: 0; padding: 6px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
 .product-bar-btn:hover { background: var(--primary-hover); }
+.product-bar-btn.swap { background: #52c41a; }
+.product-bar-btn.swap:hover { background: #73d13d; }
 .message-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .message { max-width: 70%; align-self: flex-start; }
 .message.mine { align-self: flex-end; }
