@@ -3,6 +3,7 @@
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" @retry="fetchProfile" />
     <template v-else-if="profile">
+      <button class="btn-back" @click="$router.back()">← 返回</button>
       <h2>{{ profile.username }} 的主页</h2>
 
       <div class="profile-card">
@@ -149,6 +150,8 @@ onMounted(fetchProfile)
 
 <style scoped>
 .profile-page { max-width: 900px; margin: 0 auto; }
+.btn-back { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; padding: 0 0 12px 0; }
+.btn-back:hover { color: #333; }
 .profile-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
 .info-row { margin-bottom: 8px; font-size: 14px; color: #666; }
 .info-row strong { color: #333; }

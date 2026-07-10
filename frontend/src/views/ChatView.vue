@@ -4,7 +4,7 @@
       <aside class="contact-panel">
         <h3>消息</h3>
         <div class="user-search">
-          <input v-model="userSearchKeyword" type="text" placeholder="搜索用户..." @keyup.enter="goToUserProfile" />
+          <input ref="userSearchInput" v-model="userSearchKeyword" type="text" placeholder="搜索用户..." @keyup.enter="goToUserProfile" />
           <button @click="goToUserProfile" :disabled="searchingUser || !userSearchKeyword.trim()">{{ searchingUser ? '搜索中...' : '搜索' }}</button>
         </div>
         <LoadingState v-if="loadingContacts" />
@@ -45,14 +45,14 @@
         </template>
         <template v-else>
           <div class="chat-header">
-            <strong>{{ activeContactName }}</strong>
+            <strong class="contact-name-link" @click="router.push('/user/' + activeContact)">{{ activeContactName }}</strong>
             <span v-if="activeProductTitle" class="product-tag">{{ activeProductTitle }}</span>
             <button class="btn-refresh" @click="fetchMessages" :disabled="loadingMessages">刷新</button>
           </div>
 
           <!-- 商品信息条 -->
           <div v-if="productInfo && activeProductId" class="product-bar" @click="goToProduct">
-            <img v-if="productInfo.images" :src="'/' + productInfo.images.split(',')[0]" class="product-bar-img" />
+            <img v-if="productInfo.images" :src="'/' + productInfo.images.split(',')[0]" class="product-bar-img" @load="scrollToBottomAfterRender" />
             <div class="product-bar-info">
               <span class="product-bar-title">{{ productInfo.title }}</span>
               <span class="product-bar-price">¥{{ productInfo.price }}</span>
@@ -64,12 +64,12 @@
             <LoadingState v-if="loadingMessages" />
             <div v-for="msg in messages" :key="msg.id" class="message" :class="{ mine: Number(msg.senderId) === Number(myId) }">
               <div class="msg-content">
-                <img v-if="msg.messageType === 'IMAGE'" :src="msg.attachmentUrl" class="msg-img" @click="window.open(msg.attachmentUrl)" />
-                <video v-else-if="msg.messageType === 'VIDEO'" :src="msg.attachmentUrl" controls class="msg-video"></video>
+                <img v-if="msg.messageType === 'IMAGE'" :src="msg.attachmentUrl" class="msg-img" @load="scrollToBottomAfterRender" @click="window.open(msg.attachmentUrl)" />
+                <video v-else-if="msg.messageType === 'VIDEO'" :src="msg.attachmentUrl" controls class="msg-video" @loadedmetadata="scrollToBottomAfterRender"></video>
                 <div v-else-if="msg.messageType === 'PRODUCT_CARD'" class="msg-card" @click="goToCardProduct(msg)">
                   <span class="card-label">📦 分享了商品</span>
                   <div class="card-row">
-                    <img v-if="getCardImage(msg)" :src="getCardImage(msg)" class="card-thumb" />
+                    <img v-if="getCardImage(msg)" :src="getCardImage(msg)" class="card-thumb" @load="scrollToBottomAfterRender" />
                     <strong>{{ msg.content }}</strong>
                   </div>
                 </div>
@@ -84,9 +84,9 @@
           </div>
 
           <div class="chat-input">
-            <input v-model="newMsg" type="text" placeholder="输入消息..." :disabled="sending" @keyup.enter="sendMessage" />
+            <input ref="msgInput" v-model="newMsg" type="text" placeholder="输入消息..." :disabled="sending" @keyup.enter="sendMessage" />
             <input type="file" ref="fileInput" accept="image/*,video/*" style="display:none" @change="onFilePicked" />
-            <button class="btn-attach" :disabled="sending" @click="fileInput.click()">📎</button>
+            <button class="btn-attach" :disabled="sending" @click="fileInput?.click()">📎</button>
             <button class="btn-attach" :disabled="sending || !activeContact" @click="showProductPicker = true">📦</button>
             <button @click="sendMessage" :disabled="!canSend">{{ sending ? '发送中...' : '发送' }}</button>
           </div>
@@ -121,7 +121,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onActivated, onMounted, nextTick } from 'vue'
+defineOptions({ name: 'ChatView' })
 import { useRoute, useRouter } from 'vue-router'
 import { chatAPI, reportAPI, productAPI, orderAPI, userAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -147,9 +148,12 @@ const pendingPreview = ref('')
 const pendingFile = ref(null)
 const pendingType = ref('')
 const fileInput = ref(null)
+const userSearchInput = ref(null)
+const msgInput = ref(null)
 const msgList = ref(null)
 
 const userSearchKeyword = ref('')
+const focusSearchOnReturn = ref(false)
 const routeChatOpened = ref(false)
 // Product picker
 const showProductPicker = ref(false)
@@ -233,11 +237,11 @@ const fetchMessages = async () => {
     if (activeProductId.value) params.productId = activeProductId.value
     const res = await chatAPI.getMessages(activeContact.value, params)
     messages.value = (res.data?.content || []).reverse()
-    nextTick(scrollToBottom)
   } catch (e) {
     messages.value = []
   } finally {
     loadingMessages.value = false
+    await scrollToBottomAfterRender()
   }
 }
 
@@ -311,8 +315,9 @@ const goToUserProfile = async () => {
   searchingUser.value = true
   try {
     const res = await userAPI.searchByUsername(username)
+    focusSearchOnReturn.value = true
+    sessionStorage.setItem('chatFocusSearchOnReturn', '1')
     router.push(`/user/${res.data.id}`)
-    userSearchKeyword.value = ''
   } catch (e) {
     alert(e?.message || '未找到该用户')
   } finally {
@@ -334,6 +339,7 @@ const sendMessage = async () => {
   if (sending.value || !activeContact.value) return
   if (!newMsg.value.trim() && !pendingFile.value) return
   sending.value = true
+  let shouldRefocus = false
   try {
     let attachmentUrl = ''
     let fileType = ''
@@ -360,12 +366,17 @@ const sendMessage = async () => {
     })
     if (res.data) messages.value.push(res.data)
     newMsg.value = ''
-    nextTick(scrollToBottom)
+    shouldRefocus = true
     await fetchContacts()
+    await scrollToBottomAfterRender()
   } catch (e) {
     alert(e?.message || '发送失败')
   } finally {
     sending.value = false
+    if (shouldRefocus) {
+      await nextTick()
+      msgInput.value?.focus()
+    }
   }
 }
 
@@ -381,7 +392,33 @@ const onFilePicked = (e) => {
 }
 
 const scrollToBottom = () => {
-  if (msgList.value) msgList.value.scrollTop = msgList.value.scrollHeight
+  if (!msgList.value) return
+  const el = msgList.value
+  el.scrollTop = el.scrollHeight
+  // 备用：用 scrollIntoView 确保滚到底部
+  const children = el.children
+  if (children.length > 0) {
+    children[children.length - 1].scrollIntoView({ block: 'end' })
+  }
+}
+
+const scrollToBottomAfterRender = async () => {
+  await nextTick()
+  scrollToBottom()
+  ;[0, 50, 150, 300].forEach(delay => {
+    setTimeout(scrollToBottom, delay)
+  })
+}
+
+const focusUserSearchInput = async () => {
+  const shouldFocus = focusSearchOnReturn.value || sessionStorage.getItem('chatFocusSearchOnReturn') === '1'
+  if (!shouldFocus) return
+  focusSearchOnReturn.value = false
+  sessionStorage.removeItem('chatFocusSearchOnReturn')
+  await nextTick()
+  userSearchInput.value?.focus()
+  const valueLength = userSearchInput.value?.value?.length || 0
+  userSearchInput.value?.setSelectionRange?.(valueLength, valueLength)
 }
 
 const getCardImage = (msg) => {
@@ -452,23 +489,18 @@ const formatMessageTime = (value) => {
   return String(value).replace('T', ' ').slice(5, 16)
 }
 
-let pollTimer = null
-
 onMounted(() => {
   fetchContacts()
-  pollTimer = setInterval(() => {
-    if (activeContact.value) fetchMessages()
-    fetchContacts()
-  }, 300000)
+  focusUserSearchInput()
 })
 
-onBeforeUnmount(() => {
-  if (pollTimer) clearInterval(pollTimer)
+onActivated(() => {
+  focusUserSearchInput()
 })
 </script>
 
 <style scoped>
-.chat-page { height: calc(100vh - 160px); }
+.chat-page { height: calc(100vh - 160px); overflow: hidden; }
 .chat-layout { display: grid; grid-template-columns: 280px 1fr; height: 100%; gap: 16px; }
 .contact-panel { background: #fff; border-radius: 8px; padding: 16px; overflow-y: auto; }
 .contact-panel h3 { margin-bottom: 8px; font-size: 16px; }
@@ -489,8 +521,10 @@ onBeforeUnmount(() => {
 .contact-meta { text-align: right; flex: 0 0 auto; }
 .time { font-size: 11px; color: #999; }
 .badge { display: inline-block; background: #ff4d4f; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 10px; margin-top: 4px; }
-.chat-panel { background: #fff; border-radius: 8px; display: flex; flex-direction: column; min-width: 0; }
+.chat-panel { background: #fff; border-radius: 8px; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .chat-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; gap: 8px; align-items: center; }
+.contact-name-link { cursor: pointer; }
+.contact-name-link:hover { text-decoration: underline; }
 .product-tag { font-size: 12px; color: #1890ff; background: #e6f7ff; padding: 2px 8px; border-radius: 4px; }
 .btn-refresh { margin-left: auto; background: none; border: 1px solid #d9d9d9; padding: 2px 12px; border-radius: 4px; font-size: 12px; color: #666; }
 .product-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
