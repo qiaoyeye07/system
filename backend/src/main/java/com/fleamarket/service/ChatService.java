@@ -96,7 +96,11 @@ public class ChatService {
             }
         }
 
-        return messages.map(this::toResponse);
+        List<MessageResponse> filtered = messages.stream()
+                .filter(m -> !"ORDER_CARD".equals(m.getMessageType()) || !m.getSender().getId().equals(userId))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, messages.getTotalElements());
     }
 
     @Transactional(readOnly = true)

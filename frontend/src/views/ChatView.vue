@@ -222,8 +222,8 @@ const ratingScore = ref(5)
 const ratingComment = ref('')
 const ratingOrderId = ref(null)
 const ratingRatedUserId = ref(null)
-const ratedOrders = ref(new Set(JSON.parse(localStorage.getItem('ratedOrders') || '[]')))
-const swapActions = ref(JSON.parse(localStorage.getItem('swapActions') || '{}'))
+const ratedOrders = ref(new Set())
+const swapActions = ref({})
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -565,7 +565,7 @@ const getOrderCardActions = (msg) => {
     return actions
   }
 
-  // 交换：已确认 → 双方都可以发货（已发过的灰色）
+  // 交换：已确认 → 双方都可以发货
   if (isSwap && status === 'CONFIRMED' && (isBuyer || isSeller)) {
     if (swapActions.value[card.orderId + '_ship_' + myId]) {
       actions.push(btn('已发货', 'shipped', 'card-btn-disabled', null))
@@ -574,7 +574,7 @@ const getOrderCardActions = (msg) => {
     }
   }
 
-  // 交换：双方已发货 → 都可以收货（已收过的灰色）
+  // 交换：双方已发货 → 都可以收货
   if (isSwap && status === 'BOTH_SHIPPED' && (isBuyer || isSeller)) {
     if (swapActions.value[card.orderId + '_recv_' + myId]) {
       actions.push(btn('已收货', 'received', 'card-btn-disabled', null))
@@ -685,7 +685,6 @@ const doSwapShip = async (orderId) => {
   try {
     await swapAPI.ship(orderId, { logisticsInfo: info })
     swapActions.value[orderId + '_ship_' + myId] = true
-    localStorage.setItem('swapActions', JSON.stringify(swapActions.value))
     alert('发货成功')
     fetchMessages()
     fetchContacts()
@@ -696,7 +695,6 @@ const doSwapReceive = async (orderId) => {
   try {
     await swapAPI.receive(orderId)
     swapActions.value[orderId + '_recv_' + myId] = true
-    localStorage.setItem('swapActions', JSON.stringify(swapActions.value))
     alert('收货成功')
     fetchMessages()
     fetchContacts()
@@ -726,7 +724,6 @@ const doRating = async () => {
     await ratingAPI.submit({ orderId: ratingOrderId.value, score: ratingScore.value, comment: ratingComment.value.trim() })
     showRatingModal.value = false
     ratedOrders.value.add(ratingOrderId.value)
-    localStorage.setItem('ratedOrders', JSON.stringify([...ratedOrders.value]))
     alert('评价成功')
     fetchMessages()
     fetchContacts()

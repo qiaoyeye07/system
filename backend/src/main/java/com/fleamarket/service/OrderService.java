@@ -124,8 +124,6 @@ public class OrderService {
 
         // 通知双方交易完成
         sendOrderCardMessage(order, buyerId, order.getSeller().getId(),
-                "已确认收货，交易完成");
-        sendOrderCardMessage(order, order.getSeller().getId(), buyerId,
                 "买家已确认收货，交易完成");
 
         return toResponse(order);
@@ -447,11 +445,9 @@ public class OrderService {
         createLog(order, order.getSeller(), ActionType.AGREE_SWAP, "PENDING_CONFIRM", "CONFIRMED",
                 "卖家同意交换，双方商品已下架");
 
-        // 通知双方：交换已确认
+        // 通知买家：交换已确认
         sendOrderCardMessage(order, sellerId, order.getBuyer().getId(),
-                "同意交换，双方商品已下架，请尽快发货");
-        sendOrderCardMessage(order, order.getBuyer().getId(), sellerId,
-                "交换已确认，双方商品已下架，请尽快发货");
+                "卖家同意交换，双方商品已下架，请尽快发货");
 
         return toResponse(order);
     }
@@ -603,10 +599,9 @@ public class OrderService {
         sendOrderCardMessage(order, userId, otherId2,
                 who2 + "已确认收货");
 
-        // 双方都收货 → 交换完成，通知双方
+        // 双方都收货 → 交换完成
         if ("COMPLETED".equals(newStatus)) {
-            sendOrderCardMessage(order, order.getSeller().getId(), order.getBuyer().getId(),
-                    "交换完成，双方均已收货");
+            sendSystemMessage(order, "双方均已收货，交换完成！");
         }
 
         return toResponse(order);
