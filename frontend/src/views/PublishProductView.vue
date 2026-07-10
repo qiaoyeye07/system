@@ -48,7 +48,20 @@
       </div>
       <div class="form-group">
         <label>所在地 <span class="required">*</span></label>
-        <input v-model="form.location" type="text" maxlength="50" placeholder="如：北京市朝阳区" required />
+        <div class="location-row">
+          <select v-model="selectedProvince" @change="onProvinceChange" required>
+            <option value="">请选择省份</option>
+            <option v-for="p in regions" :key="p.name" :value="p.name">{{ p.name }}</option>
+          </select>
+          <select v-model="selectedCity" @change="onCityChange" :disabled="!selectedProvince" required>
+            <option value="">请选择城市</option>
+            <option v-for="c in availableCities" :key="c.name" :value="c.name">{{ c.name }}</option>
+          </select>
+          <select v-model="selectedDistrict" :disabled="!selectedCity" required>
+            <option value="">请选择区县</option>
+            <option v-for="d in availableDistricts" :key="d" :value="d">{{ d }}</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label>商品图片（最多3张，每张≤5MB）</label>
@@ -70,9 +83,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { productAPI, categoryAPI } from '../api/modules.js'
+import { regions } from '../data/regions.js'
 
 const router = useRouter()
 const categories = ref([])
@@ -81,6 +95,39 @@ const msg = ref('')
 const msgType = ref('success')
 const previews = ref([])
 const files = ref([])
+
+const selectedProvince = ref('')
+const selectedCity = ref('')
+const selectedDistrict = ref('')
+
+const availableCities = computed(() => {
+  if (!selectedProvince.value) return []
+  const province = regions.find(p => p.name === selectedProvince.value)
+  return province ? province.cities : []
+})
+
+const availableDistricts = computed(() => {
+  if (!selectedCity.value) return []
+  const city = availableCities.value.find(c => c.name === selectedCity.value)
+  return city ? city.districts : []
+})
+
+const onProvinceChange = () => {
+  selectedCity.value = ''
+  selectedDistrict.value = ''
+}
+const onCityChange = () => {
+  selectedDistrict.value = ''
+}
+
+// 自动同步到 form.location
+watch([selectedProvince, selectedCity, selectedDistrict], () => {
+  if (selectedProvince.value && selectedCity.value && selectedDistrict.value) {
+    form.location = `${selectedProvince.value}${selectedCity.value}${selectedDistrict.value}`
+  } else {
+    form.location = ''
+  }
+})
 
 const form = reactive({
   categoryId: '', title: '', price: '', description: '',
@@ -138,6 +185,9 @@ h2 { margin-bottom: 20px; }
 .form-group textarea { resize: vertical; }
 .radio-group { display: flex; gap: 20px; }
 .radio-group label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.location-row { display: flex; gap: 8px; }
+.location-row select { flex: 1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.location-row select:disabled { background: #f5f5f5; color: #999; }
 .previews { display: flex; gap: 8px; margin-top: 8px; }
 .preview-img { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
 .form-actions { display: flex; gap: 12px; }
