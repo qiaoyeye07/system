@@ -26,18 +26,18 @@ public class OrderAutoCompleteScheduler {
     private final OrderLogRepository orderLogRepository;
     private final UserRepository userRepository;
 
-    /** 每整点执行，自动完成收货超3天的订单 */
+    /** 每整点执行，自动确认收货超7天的订单 */
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
-    public void autoCompleteReceivedOrders() {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(3);
+    public void autoCompleteShippedOrders() {
+        LocalDateTime threshold = LocalDateTime.now().minusDays(7);
         User systemUser = userRepository.findById(1L).orElse(null);
         if (systemUser == null) return;
 
-        List<Order> receivedOrders = orderRepository
-                .findByStatusAndOrderType("RECEIVED", OrderType.CASH);
+        List<Order> shippedOrders = orderRepository
+                .findByStatusAndOrderType("SHIPPED", OrderType.CASH);
 
-        for (Order order : receivedOrders) {
+        for (Order order : shippedOrders) {
             if (order.getUpdatedAt() != null && order.getUpdatedAt().isBefore(threshold)) {
                 order.setStatus("COMPLETED");
                 orderRepository.save(order);
@@ -46,9 +46,9 @@ public class OrderAutoCompleteScheduler {
                         .order(order)
                         .operator(systemUser)
                         .actionType(ActionType.AUTO_COMPLETE)
-                        .oldStatus("RECEIVED")
+                        .oldStatus("SHIPPED")
                         .newStatus("COMPLETED")
-                        .detail("系统自动完成（收货超3天）")
+                        .detail("系统自动确认收货（超7天）")
                         .build();
                 orderLogRepository.save(orderLog);
 

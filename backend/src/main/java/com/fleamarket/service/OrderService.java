@@ -100,22 +100,10 @@ public class OrderService {
         Order order = getOrder(orderId, buyerId, true);
         validateStatus(order, "SHIPPED", "收货");
 
-        order.setStatus("RECEIVED");
-        orderRepository.save(order);
-        createLog(order, order.getBuyer(), ActionType.RECEIVE, "SHIPPED", "RECEIVED", "买家确认收货");
-
-        return toResponse(order);
-    }
-
-    @Transactional
-    public OrderResponse completeOrder(Long buyerId, Long orderId) {
-        Order order = getOrder(orderId, buyerId, true);
-        validateStatus(order, "RECEIVED", "确认完成");
-
         order.setStatus("COMPLETED");
         orderRepository.save(order);
-        createLog(order, order.getBuyer(), ActionType.RECEIVE, "RECEIVED", "COMPLETED",
-                "买家确认完成，交易结束");
+        createLog(order, order.getBuyer(), ActionType.RECEIVE, "SHIPPED", "COMPLETED",
+                "买家确认收货，交易完成");
 
         return toResponse(order);
     }
@@ -335,8 +323,8 @@ public class OrderService {
         if ("APPROVE_REFUND".equals(action)) {
             return cancelOrder(order, getSystemUser(), "管理员裁定：" + reason);
         } else {
-            // 驳回纠纷：取消类纠纷回到 PAID，退款类纠纷回到 RECEIVED
-            String returnStatus = order.getCancelReason() != null ? "PAID" : "RECEIVED";
+            // 驳回纠纷：取消类纠纷回到 PAID，退款类纠纷回到 SHIPPED
+            String returnStatus = order.getCancelReason() != null ? "PAID" : "SHIPPED";
             order.setStatus(returnStatus);
             order.setRefundReason(null);
             order.setCancelReason(null);

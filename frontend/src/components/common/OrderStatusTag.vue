@@ -11,8 +11,8 @@ const props = defineProps({
 
 const statusMap = {
   // 现金订单
-  PENDING_PAY: '待付款', PAID: '已付款', SHIPPED: '已发货', RECEIVED: '已收货',
-  DISPUTE: '纠纷中', COMPLETED: '已完成', CANCELLED: '已取消',
+  PENDING_PAY: '待付款', PAID: '待发货', SHIPPED: '已发货',
+  RECEIVED: '已收货', DISPUTE: '纠纷中', COMPLETED: '已完成', CANCELLED: '已取消',
   // 交换订单
   PENDING_CONFIRM: '待确认', CONFIRMED: '已确认', BOTH_SHIPPED: '双方已发货',
   REJECTED: '已拒绝',
@@ -27,7 +27,7 @@ const statusText = computed(() => statusMap[props.status] || props.status)
 const statusClass = computed(() => {
   const s = props.status
   if (['PENDING_PAY','PAID','PENDING_CONFIRM','PENDING','PROCESSING','APPEALING'].includes(s)) return 'status-warning'
-  if (['SHIPPED','BOTH_SHIPPED','RECEIVED','DISPUTE'].includes(s)) return 'status-info'
+  if (['SHIPPED','BOTH_SHIPPED','DISPUTE'].includes(s)) return 'status-info'
   if (['COMPLETED','ACTIVE','ACCEPTED'].includes(s)) return 'status-success'
   if (['CANCELLED','REJECTED','SOLD','OFF'].includes(s)) return 'status-default'
   return 'status-default'

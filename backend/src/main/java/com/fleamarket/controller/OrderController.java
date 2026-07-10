@@ -53,14 +53,7 @@ public class OrderController {
     public ApiResponse<OrderResponse> receive(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrderResponse order = orderService.receive(userId, id);
-        return ApiResponse.success("收货成功，交易即将完成", order);
-    }
-
-    @PostMapping("/orders/{id}/complete")
-    public ApiResponse<OrderResponse> complete(@PathVariable Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        OrderResponse order = orderService.completeOrder(userId, id);
-        return ApiResponse.success("交易已完成", order);
+        return ApiResponse.success("确认收货成功，交易已完成", order);
     }
 
     @PostMapping("/orders/{id}/cancel")

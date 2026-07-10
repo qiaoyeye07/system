@@ -67,27 +67,6 @@
             <p class="refund-info dispute-info">已拒绝退款申请，等待买家处理</p>
             <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
           </template>
-          <template v-if="order.status === 'RECEIVED' && isBuyer && !order.refundReason">
-            <button class="btn-primary" @click="confirmComplete">确认收货</button>
-            <button @click="showRefundDialog = true">申请退款</button>
-          </template>
-          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && !sellerRejectedRefund">
-            <p class="refund-info">退款中：{{ order.refundReason }}</p>
-            <button @click="doCancelRefund">取消退款申请</button>
-          </template>
-          <template v-if="order.status === 'RECEIVED' && isBuyer && order.refundReason && sellerRejectedRefund">
-            <p class="refund-info dispute-info">卖家已拒绝退款：{{ order.refundReason }}</p>
-            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
-          </template>
-          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason && !sellerRejectedRefund">
-            <p class="refund-info">买家申请退款：{{ order.refundReason }}</p>
-            <button class="btn-primary" @click="doAgreeRefund">同意退款</button>
-            <button class="btn-danger" @click="doRejectRefund">拒绝退款</button>
-          </template>
-          <template v-if="order.status === 'RECEIVED' && isSeller && order.refundReason && sellerRejectedRefund">
-            <p class="refund-info dispute-info">已拒绝退款申请，等待买家处理</p>
-            <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
-          </template>
           <template v-if="order.status === 'DISPUTE' && isBuyer">
             <p class="refund-info dispute-info">已提交管理员仲裁，请等待处理</p>
             <p v-if="order.refundReason" class="refund-detail">申诉理由：{{ order.refundReason }}</p>
