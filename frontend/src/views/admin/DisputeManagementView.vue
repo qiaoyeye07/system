@@ -96,7 +96,8 @@ onMounted(fetchDisputes)
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 14px; }
 .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; resize: vertical; }
-.radio-group label { display: block; margin-bottom: 6px; font-size: 14px; }
+.radio-group label { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; cursor: pointer; }
+.radio-group input[type="radio"] { width: auto; margin: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
 .btn-primary { padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 4px; }
