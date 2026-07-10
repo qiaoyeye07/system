@@ -20,6 +20,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.HashMap;
+
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -28,6 +32,7 @@ public class OrderService {
     private final OrderLogRepository orderLogRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ChatService chatService;
 
     // ==================== 现金订单 ====================
 
@@ -67,6 +72,10 @@ public class OrderService {
         order = orderRepository.save(order);
         createLog(order, buyer, ActionType.CREATE, null, status, "买家下单");
 
+        // 发送订单卡片给卖家
+        sendOrderCardMessage(order, buyerId, product.getSeller().getId(),
+                "拍下了你的商品「" + product.getTitle() + "」，请及时处理");
+
         return toResponse(order);
     }
 
@@ -78,6 +87,10 @@ public class OrderService {
         order.setStatus("PAID");
         orderRepository.save(order);
         createLog(order, order.getBuyer(), ActionType.PAY, "PENDING_PAY", "PAID", "买家模拟付款");
+
+        // 通知卖家：买家已付款
+        sendOrderCardMessage(order, buyerId, order.getSeller().getId(),
+                "已付款，请尽快发货");
 
         return toResponse(order);
     }
@@ -92,6 +105,10 @@ public class OrderService {
         orderRepository.save(order);
         createLog(order, order.getSeller(), ActionType.SHIP, "PAID", "SHIPPED", "卖家发货：" + logisticsInfo);
 
+        // 通知买家：卖家已发货
+        sendOrderCardMessage(order, sellerId, order.getBuyer().getId(),
+                "已发货" + (logisticsInfo != null ? "，物流：" + logisticsInfo : ""));
+
         return toResponse(order);
     }
 
@@ -104,6 +121,12 @@ public class OrderService {
         orderRepository.save(order);
         createLog(order, order.getBuyer(), ActionType.RECEIVE, "SHIPPED", "COMPLETED",
                 "买家确认收货，交易完成");
+
+        // 通知双方交易完成
+        sendOrderCardMessage(order, buyerId, order.getSeller().getId(),
+                "已确认收货，交易完成");
+        sendOrderCardMessage(order, order.getSeller().getId(), buyerId,
+                "买家已确认收货，交易完成");
 
         return toResponse(order);
     }
@@ -211,6 +234,10 @@ public class OrderService {
         createLog(order, order.getBuyer(), ActionType.REQUEST_REFUND, status, status,
                 "买家申请退款：" + reason);
 
+        // 通知卖家：买家申请退款
+        sendOrderCardMessage(order, buyerId, order.getSeller().getId(),
+                "申请退款：" + reason);
+
         return toResponse(order);
     }
 
@@ -245,6 +272,10 @@ public class OrderService {
         createLog(order, order.getSeller(), ActionType.REJECT_REFUND, order.getStatus(), order.getStatus(),
                 "卖家拒绝退款");
 
+        // 通知买家：卖家拒绝退款
+        sendOrderCardMessage(order, sellerId, order.getBuyer().getId(),
+                "拒绝了退款申请");
+
         return toResponse(order);
     }
 
@@ -267,6 +298,9 @@ public class OrderService {
         createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
                 ActionType.REQUEST_REFUND, oldStatus, "DISPUTE",
                 who + "申请管理员介入：" + reason);
+
+        // 发送系统消息通知双方：已进入纠纷
+        sendSystemMessage(order, "订单已进入纠纷处理，等待管理员裁定");
 
         return toResponse(order);
     }
@@ -385,6 +419,10 @@ public class OrderService {
         createLog(order, buyer, ActionType.CREATE, null, "PENDING_CONFIRM",
                 "买家发起交换提议" + (request.getSwapNote() != null ? "：" + request.getSwapNote() : ""));
 
+        // 通知卖家：收到交换提议
+        sendOrderCardMessage(order, buyerId, targetProduct.getSeller().getId(),
+                "想用「" + swapProduct.getTitle() + "」交换你的「" + targetProduct.getTitle() + "」");
+
         return toResponse(order);
     }
 
@@ -409,6 +447,12 @@ public class OrderService {
         createLog(order, order.getSeller(), ActionType.AGREE_SWAP, "PENDING_CONFIRM", "CONFIRMED",
                 "卖家同意交换，双方商品已下架");
 
+        // 通知双方：交换已确认
+        sendOrderCardMessage(order, sellerId, order.getBuyer().getId(),
+                "同意交换，双方商品已下架，请尽快发货");
+        sendOrderCardMessage(order, order.getBuyer().getId(), sellerId,
+                "交换已确认，双方商品已下架，请尽快发货");
+
         return toResponse(order);
     }
 
@@ -422,6 +466,10 @@ public class OrderService {
         createLog(order, order.getSeller(), ActionType.REJECT_SWAP, "PENDING_CONFIRM", "REJECTED",
                 "卖家拒绝交换");
 
+        // 通知买家：交换被拒绝
+        sendOrderCardMessage(order, sellerId, order.getBuyer().getId(),
+                "拒绝了交换提议");
+
         return toResponse(order);
     }
 
@@ -434,6 +482,10 @@ public class OrderService {
         orderRepository.save(order);
         createLog(order, order.getBuyer(), ActionType.REJECT_SWAP, "PENDING_CONFIRM", "REJECTED",
                 "买家撤回交换提议");
+
+        // 通知卖家：买家撤回
+        sendOrderCardMessage(order, buyerId, order.getSeller().getId(),
+                "撤回了交换提议");
 
         return toResponse(order);
     }
@@ -487,6 +539,12 @@ public class OrderService {
         createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
                 ActionType.SHIP, "CONFIRMED", newStatus, detail);
 
+        // 通知对方：已发货
+        Long otherId = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+        String who = isBuyer ? "买家" : "卖家";
+        sendOrderCardMessage(order, userId, otherId,
+                who + "已发货" + (logisticsInfo != null ? "：" + logisticsInfo : ""));
+
         return toResponse(order);
     }
 
@@ -512,6 +570,18 @@ public class OrderService {
         String newStatus = order.getStatus();
         createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
                 ActionType.RECEIVE, "BOTH_SHIPPED", newStatus, detail);
+
+        // 通知对方：已收货
+        Long otherId2 = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+        String who2 = isBuyer ? "买家" : "卖家";
+        sendOrderCardMessage(order, userId, otherId2,
+                who2 + "已确认收货");
+
+        // 双方都收货 → 交换完成，通知双方
+        if ("COMPLETED".equals(newStatus)) {
+            sendOrderCardMessage(order, order.getSeller().getId(), order.getBuyer().getId(),
+                    "交换完成，双方均已收货");
+        }
 
         return toResponse(order);
     }
@@ -653,7 +723,91 @@ public class OrderService {
         return prefix + "-" + date + "-" + seq;
     }
 
-    // ==================== 管理员查询 ====================
+    // ==================== 订单卡片消息 ====================
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 发送订单状态卡片消息到聊天
+     * @param order 订单
+     * @param senderId 发送方（系统自动发送时用 buyer/seller id）
+     * @param receiverId 接收方
+     * @param text 消息文本
+     */
+    private void sendOrderCardMessage(Order order, Long senderId, Long receiverId, String text) {
+        try {
+            String productImage = order.getProduct() != null && order.getProduct().getImages() != null
+                    ? order.getProduct().getImages().split(",")[0] : null;
+
+            String swapProductTitle = null;
+            String swapProductImage = null;
+            Long swapProductId = null;
+            if (order.getSwapProduct() != null) {
+                swapProductId = order.getSwapProduct().getId();
+                swapProductTitle = order.getSwapProduct().getTitle();
+                swapProductImage = order.getSwapProduct().getImages() != null
+                        ? order.getSwapProduct().getImages().split(",")[0] : null;
+            }
+
+            Map<String, Object> cardData = new HashMap<>();
+            cardData.put("orderId", order.getId());
+            cardData.put("orderNo", order.getOrderNo());
+            cardData.put("orderStatus", order.getStatus());
+            cardData.put("orderType", order.getOrderType().name());
+            cardData.put("productTitle", order.getProduct().getTitle());
+            cardData.put("productPrice", order.getProduct().getPrice());
+            cardData.put("productImage", productImage);
+            cardData.put("swapProductId", swapProductId);
+            cardData.put("swapProductTitle", swapProductTitle);
+            cardData.put("swapProductImage", swapProductImage);
+            cardData.put("buyerName", order.getBuyer().getUsername());
+            cardData.put("sellerName", order.getSeller().getUsername());
+            cardData.put("buyerId", order.getBuyer().getId());
+            cardData.put("sellerId", order.getSeller().getId());
+            cardData.put("refundReason", order.getRefundReason());
+            cardData.put("cancelReason", order.getCancelReason());
+            cardData.put("logisticsInfo", order.getLogisticsInfo());
+            cardData.put("swapNote", order.getSwapNote());
+            cardData.put("messageType", "ORDER_CARD");
+
+            String content = objectMapper.writeValueAsString(cardData);
+
+            chatService.sendMessage(senderId, receiverId, order.getProduct().getId(),
+                    content, "ORDER_CARD", productImage);
+        } catch (Exception e) {
+            // 消息发送失败不影响订单操作
+        }
+    }
+
+    /**
+     * 发送系统提示消息（居中显示，不属于任何一方）
+     */
+    private void sendSystemMessage(Order order, String text) {
+        try {
+            Map<String, Object> cardData = new HashMap<>();
+            cardData.put("orderId", order.getId());
+            cardData.put("orderNo", order.getOrderNo());
+            cardData.put("orderStatus", order.getStatus());
+            cardData.put("productTitle", order.getProduct().getTitle());
+            cardData.put("productPrice", order.getProduct().getPrice());
+            cardData.put("buyerName", order.getBuyer().getUsername());
+            cardData.put("sellerName", order.getSeller().getUsername());
+            cardData.put("buyerId", order.getBuyer().getId());
+            cardData.put("sellerId", order.getSeller().getId());
+            cardData.put("refundReason", order.getRefundReason());
+            cardData.put("cancelReason", order.getCancelReason());
+            cardData.put("logisticsInfo", order.getLogisticsInfo());
+            String content = objectMapper.writeValueAsString(cardData);
+
+            // 分别发送给双方，senderId用1(系统/admin)
+            chatService.sendMessage(1L, order.getBuyer().getId(), order.getProduct().getId(),
+                    content, "SYSTEM_MSG", null);
+            chatService.sendMessage(1L, order.getSeller().getId(), order.getProduct().getId(),
+                    content, "SYSTEM_MSG", null);
+        } catch (Exception e) {
+            // 消息发送失败不影响订单操作
+        }
+    }
 
     public Page<OrderResponse> listOrdersByTypeAndStatus(OrderType orderType, String status, Pageable pageable) {
         if (status != null && !status.isEmpty()) {

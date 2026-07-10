@@ -62,8 +62,17 @@
 
           <div class="message-list" ref="msgList">
             <LoadingState v-if="loadingMessages" />
-            <div v-for="msg in messages" :key="msg.id" class="message" :class="{ mine: Number(msg.senderId) === Number(myId) }">
-              <div class="msg-content">
+            <div v-for="msg in messages" :key="msg.id"
+              :class="msg.messageType === 'SYSTEM_MSG' ? 'system-msg' : ['message', { mine: Number(msg.senderId) === Number(myId) }]">
+              <div v-if="msg.messageType === 'SYSTEM_MSG'" class="system-msg-content">
+                <span class="system-msg-icon">⚖</span>
+                <p>{{ parseOrderCard(msg).text || '订单纠纷处理中' }}</p>
+                <div class="card-actions" v-if="getOrderCardActions(msg).length">
+                  <button v-for="act in getOrderCardActions(msg)" :key="act.key"
+                    :class="act.cls" @click="act.handler">{{ act.label }}</button>
+                </div>
+              </div>
+              <div v-else class="msg-content">
                 <img v-if="msg.messageType === 'IMAGE'" :src="msg.attachmentUrl" class="msg-img" @load="scrollToBottomAfterRender" @click="window.open(msg.attachmentUrl)" />
                 <video v-else-if="msg.messageType === 'VIDEO'" :src="msg.attachmentUrl" controls class="msg-video" @loadedmetadata="scrollToBottomAfterRender"></video>
                 <div v-else-if="msg.messageType === 'PRODUCT_CARD'" class="msg-card" @click="goToCardProduct(msg)">
@@ -73,9 +82,32 @@
                     <strong>{{ msg.content }}</strong>
                   </div>
                 </div>
+                <div v-else-if="msg.messageType === 'ORDER_CARD'" class="msg-card order-card" @click.stop>
+                  <p class="card-label">📋 {{ parseOrderCard(msg).text || '订单消息' }}</p>
+                  <!-- 目标商品 -->
+                  <div class="card-row">
+                    <img v-if="parseOrderCard(msg).productImage" :src="'/' + parseOrderCard(msg).productImage" class="card-thumb" @load="scrollToBottomAfterRender" />
+                    <div class="card-info">
+                      <strong>{{ parseOrderCard(msg).productTitle }}</strong>
+                      <span class="card-price">¥{{ parseOrderCard(msg).productPrice?.toFixed(2) }}</span>
+                      <span class="card-status">{{ statusLabel(parseOrderCard(msg).orderStatus) }}</span>
+                    </div>
+                  </div>
+                  <!-- 交换物 -->
+                  <div v-if="parseOrderCard(msg).swapProductTitle" class="card-row" style="margin-top:8px;padding-top:8px;border-top:1px dashed #e8e8e8">
+                    <img v-if="parseOrderCard(msg).swapProductImage" :src="'/' + parseOrderCard(msg).swapProductImage" class="card-thumb" @load="scrollToBottomAfterRender" />
+                    <div class="card-info">
+                      <strong style="color:#52c41a">⇄ {{ parseOrderCard(msg).swapProductTitle }}</strong>
+                    </div>
+                  </div>
+                  <div class="card-actions" v-if="getOrderCardActions(msg).length">
+                    <button v-for="act in getOrderCardActions(msg)" :key="act.key"
+                      :class="act.cls" @click="act.handler">{{ act.label }}</button>
+                  </div>
+                </div>
                 <template v-else>{{ msg.content }}</template>
               </div>
-              <div class="msg-meta">
+              <div v-if="msg.messageType !== 'SYSTEM_MSG'" class="msg-meta">
                 <span class="msg-time">{{ formatMessageTime(msg.createdAt) }}</span>
                 <span v-if="Number(msg.senderId) === Number(myId)" class="msg-status" :class="{ read: msg.isRead }">{{ msg.isRead ? '已读' : '未读' }}</span>
                 <button v-if="Number(msg.senderId) !== Number(myId)" class="btn-report-msg" @click="reportMessage(msg)">举报</button>
@@ -114,6 +146,22 @@
             <video v-else-if="pendingType === 'VIDEO'" :src="pendingPreview" controls class="video-preview" />
             <button @click="pendingPreview='';pendingFile=null;pendingType=''">✕</button>
           </div>
+
+          <!-- 评价弹窗 -->
+          <div v-if="showRatingModal" class="picker-overlay" @click.self="showRatingModal = false">
+            <div class="picker-card" style="width:400px">
+              <h4>评价</h4>
+              <StarRating v-model="ratingScore" :showText="true" />
+              <div style="margin-top:12px">
+                <label style="display:block;margin-bottom:4px;font-size:14px">评价内容</label>
+                <textarea v-model="ratingComment" rows="4" maxlength="500" placeholder="写下本次交易体验..." style="width:100%;padding:8px;border:1px solid #d9d9d9;border-radius:4px;resize:vertical"></textarea>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                <button class="btn-cancel" @click="showRatingModal = false">取消</button>
+                <button class="btn-primary" @click="doRating">提交评价</button>
+              </div>
+            </div>
+          </div>
         </template>
       </section>
     </div>
@@ -124,9 +172,10 @@
 import { ref, computed, onActivated, onMounted, nextTick } from 'vue'
 defineOptions({ name: 'ChatView' })
 import { useRoute, useRouter } from 'vue-router'
-import { chatAPI, reportAPI, productAPI, orderAPI, userAPI } from '../api/modules.js'
+import { chatAPI, reportAPI, productAPI, orderAPI, swapAPI, userAPI, ratingAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
+import StarRating from '../components/common/StarRating.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,6 +209,14 @@ const showProductPicker = ref(false)
 const pickerKeyword = ref('')
 const pickerProducts = ref([])
 const pickerSearched = ref(false)
+
+// 评价弹窗
+const showRatingModal = ref(false)
+const ratingScore = ref(5)
+const ratingComment = ref('')
+const ratingOrderId = ref(null)
+const ratingRatedUserId = ref(null)
+const ratedOrders = ref(new Set())
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -431,6 +488,194 @@ const goToCardProduct = (msg) => {
   if (pid && Number(pid) > 0) router.push('/product/' + Number(pid))
 }
 
+// ========= 订单卡片 =========
+const parseOrderCard = (msg) => {
+  try {
+    const data = JSON.parse(msg.content)
+    data.text = msg.content // fallback
+    // If content is JSON with order data, extract display text separately
+    if (typeof data === 'object' && data.orderId) {
+      // The display text is determined by order status
+      const statusTexts = {
+        PENDING_PAY: '买家已拍下，等待付款',
+        PAID: '买家已付款，等待发货',
+        SHIPPED: '卖家已发货',
+        COMPLETED: '交易已完成',
+        CANCELLED: '订单已取消',
+        DISPUTE: '订单纠纷中'
+      }
+      data.text = statusTexts[data.orderStatus] || '订单状态更新'
+    }
+    return data
+  } catch (e) {
+    return { text: msg.content }
+  }
+}
+
+const statusLabel = (s) => {
+  const map = { PENDING_PAY: '待付款', PAID: '已付款', SHIPPED: '已发货', COMPLETED: '已完成', CANCELLED: '已取消', DISPUTE: '纠纷中' }
+  return map[s] || s
+}
+
+const getOrderCardActions = (msg) => {
+  const card = parseOrderCard(msg)
+  if (!card.orderId) return []
+
+  const isBuyer = Number(card.buyerId) === Number(myId)
+  const isSeller = Number(card.sellerId) === Number(myId)
+  const status = card.orderStatus
+  const hasRefund = !!card.refundReason
+  const isDispute = status === 'DISPUTE'
+  const actions = []
+
+  const btn = (label, key, cls, handler) => ({ label, key, cls, handler })
+
+  const isSwap = card.orderType === 'SWAP'
+
+  // 交换：待确认 → 卖家可同意/拒绝
+  if (isSwap && status === 'PENDING_CONFIRM' && isSeller) {
+    actions.push(btn('同意交换', 'agreeSwap', 'card-btn-primary', () => handleSwapAction(card.orderId, 'agreeSwap')))
+    actions.push(btn('拒绝交换', 'rejectSwap', 'card-btn-danger', () => handleSwapAction(card.orderId, 'rejectSwap')))
+    actions.push(btn('查看订单', 'view', 'card-btn-default', () => router.push(`/swap/${card.orderId}`)))
+    return actions
+  }
+
+  // 交换：已确认 → 双方都可以发货
+  if (isSwap && status === 'CONFIRMED' && (isBuyer || isSeller)) {
+    actions.push(btn('立即发货', 'ship', 'card-btn-primary', () => showShipInput(card.orderId)))
+  }
+
+  // 交换：双方已发货 → 都可以收货
+  if (isSwap && status === 'BOTH_SHIPPED' && (isBuyer || isSeller)) {
+    actions.push(btn('确认收货', 'receive', 'card-btn-primary', () => handleSwapAction(card.orderId, 'receive')))
+  }
+
+  // 交换：完成 → 双方可评价
+  if (isSwap && status === 'COMPLETED') {
+    if (ratedOrders.value.has(card.orderId)) {
+      actions.push(btn('已评价', 'rated', 'card-btn-disabled', null))
+    } else {
+      actions.push(btn('去评价', 'rate', 'card-btn-primary', () => openRateModal(card.orderId, isBuyer ? card.sellerId : card.buyerId)))
+    }
+  }
+
+  // 以下为非交换订单逻辑
+  if (hasRefund && !isDispute && isSeller && status !== 'CANCELLED' && status !== 'COMPLETED') {
+    actions.push(btn('同意退款', 'agreeRefund', 'card-btn-primary', () => handleRefundAction(card.orderId, 'agreeRefund')))
+    actions.push(btn('拒绝退款', 'rejectRefund', 'card-btn-danger', () => handleRefundAction(card.orderId, 'rejectRefund')))
+    actions.push(btn('查看订单', 'view', 'card-btn-default', () => router.push(`/order/${card.orderId}`)))
+    return actions
+  }
+
+  // 退款申请中：买家可以取消退款或申请平台介入
+  if (hasRefund && !isDispute && isBuyer && status !== 'CANCELLED' && status !== 'COMPLETED') {
+    actions.push(btn('取消退款', 'cancelRefund', 'card-btn-default', () => handleRefundAction(card.orderId, 'cancelRefund')))
+    actions.push(btn('申请平台介入', 'escalate', 'card-btn-danger', () => handleEscalateAction(card.orderId)))
+  }
+
+  // 纠纷中
+  if (isDispute) {
+    actions.push(btn('查看订单', 'view', 'card-btn-default', () => router.push(`/order/${card.orderId}`)))
+    return actions
+  }
+
+  if (status === 'PENDING_PAY' && isBuyer) {
+    actions.push(btn('立即付款', 'pay', 'card-btn-primary', () => handleOrderAction(card.orderId, 'pay')))
+  }
+  if (status === 'PAID' && isSeller) {
+    actions.push(btn('立即发货', 'ship', 'card-btn-primary', () => showShipInput(card.orderId)))
+  }
+  if (status === 'SHIPPED' && isBuyer) {
+    actions.push(btn('确认收货', 'receive', 'card-btn-primary', () => handleOrderAction(card.orderId, 'receive')))
+  }
+  if (status === 'COMPLETED' && isBuyer) {
+    if (ratedOrders.value.has(card.orderId)) {
+      actions.push(btn('已评价', 'rated', 'card-btn-disabled', null))
+    } else {
+      actions.push(btn('去评价', 'rate', 'card-btn-primary', () => openRateModal(card.orderId, card.sellerId)))
+    }
+  }
+  actions.push(btn('查看订单', 'view', 'card-btn-default', () => router.push(`/order/${card.orderId}`)))
+
+  return actions
+}
+
+const handleRefundAction = async (orderId, action) => {
+  try {
+    if (action === 'agreeRefund') await orderAPI.agreeRefund(orderId)
+    else if (action === 'rejectRefund') await orderAPI.rejectRefund(orderId)
+    else if (action === 'cancelRefund') await orderAPI.cancelRefund(orderId)
+    alert('操作成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) { alert(e?.message || '操作失败') }
+}
+
+const handleEscalateAction = (orderId) => {
+  const reason = prompt('请描述申请平台介入的原因：')
+  if (!reason) return
+  orderAPI.escalate(orderId, { reason }).then(() => {
+    alert('已提交平台介入申请')
+    fetchMessages()
+    fetchContacts()
+  }).catch(e => alert(e?.message || '操作失败'))
+}
+
+const handleOrderAction = async (orderId, action) => {
+  try {
+    if (action === 'pay') {
+      await orderAPI.pay(orderId)
+    } else if (action === 'receive') {
+      await orderAPI.receive(orderId)
+    }
+    alert('操作成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) {
+    alert(e?.message || '操作失败')
+  }
+}
+
+const handleSwapAction = async (orderId, action) => {
+  try {
+    if (action === 'agreeSwap') await swapAPI.agree(orderId)
+    else if (action === 'rejectSwap') await swapAPI.reject(orderId)
+    else if (action === 'receive') await swapAPI.receive(orderId)
+    alert('操作成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) { alert(e?.message || '操作失败') }
+}
+
+const showShipInput = (orderId) => {
+  const info = prompt('请输入物流信息（快递公司+单号）：')
+  if (!info) return
+  orderAPI.ship(orderId, { logisticsInfo: info }).then(() => {
+    alert('发货成功')
+    fetchMessages()
+    fetchContacts()
+  }).catch(e => alert(e?.message || '操作失败'))
+}
+
+const openRateModal = (orderId, ratedUserId) => {
+  ratingOrderId.value = orderId
+  ratingRatedUserId.value = ratedUserId
+  ratingScore.value = 5
+  ratingComment.value = ''
+  showRatingModal.value = true
+}
+
+const doRating = async () => {
+  try {
+    await ratingAPI.submit({ orderId: ratingOrderId.value, score: ratingScore.value, comment: ratingComment.value.trim() })
+    showRatingModal.value = false
+    ratedOrders.value.add(ratingOrderId.value)
+    alert('评价成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) { alert(e?.message || '评价失败') }
+}
+
 const searchProducts = async () => {
   const kw = pickerKeyword.value.trim()
   if (!kw) return
@@ -562,6 +807,22 @@ onActivated(() => {
 .card-label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; }
 .card-row { display: flex; align-items: center; gap: 8px; }
 .card-thumb { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; }
+.order-card { cursor: default; min-width: 220px; }
+.order-card:hover { border-color: #e8e8e8; }
+.card-info { display: flex; flex-direction: column; gap: 2px; }
+.card-price { color: #ff4d4f; font-size: 16px; font-weight: bold; }
+.card-status { font-size: 11px; color: #1890ff; }
+.card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.card-actions button { padding: 5px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid #d9d9d9; background: #fff; }
+.card-btn-primary { background: #1890ff !important; color: #fff !important; border-color: #1890ff !important; }
+.card-btn-danger { background: #fff !important; color: #ff4d4f !important; border-color: #ff4d4f !important; }
+.card-btn-disabled { background: #f5f5f5 !important; color: #bbb !important; border-color: #d9d9d9 !important; cursor: not-allowed !important; }
+.card-btn-default { color: #333; }
+.system-msg { display: flex; justify-content: center; margin: 16px 0; }
+.system-msg-content { background: #fff7e6; border: 1px solid #ffd591; border-radius: 8px; padding: 10px 20px; text-align: center; max-width: 350px; }
+.system-msg-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.system-msg-content p { margin: 0; font-size: 13px; color: #ad6800; }
+.system-msg .card-actions { justify-content: center; margin-top: 8px; }
 .picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display:flex; align-items:center; justify-content:center; }
 .picker-card { background: #fff; border-radius: 8px; padding: 20px; width: 420px; max-height: 70vh; display:flex; flex-direction:column; gap:12px; }
 .picker-card h4 { margin: 0; }
