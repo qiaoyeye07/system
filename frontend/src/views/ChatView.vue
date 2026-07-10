@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onActivated, onMounted, nextTick } from 'vue'
+import { ref, computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, nextTick, watch } from 'vue'
 defineOptions({ name: 'ChatView' })
 import { useRoute, useRouter } from 'vue-router'
 import { chatAPI, reportAPI, productAPI, orderAPI, swapAPI, userAPI, ratingAPI } from '../api/modules.js'
@@ -203,7 +203,7 @@ const msgList = ref(null)
 
 const userSearchKeyword = ref('')
 const focusSearchOnReturn = ref(false)
-const routeChatOpened = ref(false)
+const routeChatKey = ref('')
 // Product picker
 const showProductPicker = ref(false)
 const pickerKeyword = ref('')
@@ -220,6 +220,7 @@ const ratedOrders = ref(new Set())
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
+let syncTimer = null
 
 // 免打扰列表存 localStorage：key = `${contactId}_${productId||0}`
 const getMuteKey = (contact) => `${contact.contactId}_${contact.productId || 0}`
@@ -234,71 +235,41 @@ const sameProduct = (left, right) => {
 const isActiveContact = (contact) =>
   Number(contact.contactId) === Number(activeContact.value) && sameProduct(contact.productId, activeProductId.value)
 
-const fetchContacts = async () => {
-  loadingContacts.value = true
+const getTotalUnread = () =>
+  contacts.value.reduce((total, contact) => total + Number(contact.unreadCount || 0), 0)
+
+const notifyUnreadChanged = (unreadCount = getTotalUnread()) => {
+  window.dispatchEvent(new CustomEvent('chat-realtime', {
+    detail: { type: 'CHAT_UNREAD_CHANGED', unreadCount }
+  }))
+}
+
+const fetchContacts = async (silent = false) => {
+  if (!silent) loadingContacts.value = true
   try {
     const res = await chatAPI.getContacts()
     contacts.value = res.data || []
-    const contactId = route.query.contactId || route.params.contactId
-    if (contactId && !routeChatOpened.value) {
-      const targetId = Number(contactId)
-      if (!Number.isFinite(targetId) || targetId <= 0) return
-      const productId = route.query.productId ? Number(route.query.productId) : null
-      let c = contacts.value.find(item => Number(item.contactId) === targetId && sameProduct(item.productId, productId))
-      // If no existing conversation, create a placeholder so chat can start immediately
-      if (!c) {
-        c = {
-          contactId: targetId,
-          contactName: route.query.contactName || `用户${targetId}`,
-          productId: productId || undefined,
-          productTitle: '',
-          lastMessage: '',
-          lastMessageTime: null,
-          unreadCount: 0
-        }
-        contacts.value.unshift(c)
-      }
-      routeChatOpened.value = true
-      await openChat(c.contactId, c.productId, c.contactName)
-      // Auto-send product card if came from product detail page
-      if (route.query.sendCard === 'true' && route.query.productId) {
-        const pid = Number(route.query.productId)
-        if (pid > 0) {
-          try {
-            const prodRes = await productAPI.getDetail(pid)
-            const p = prodRes.data
-            await chatAPI.send({
-              receiverId: targetId,
-              productId: pid,
-              content: p?.title || `商品 #${pid}`,
-              messageType: 'PRODUCT_CARD',
-              attachmentUrl: p?.images?.split(',')[0] || ''
-            })
-            await fetchMessages()
-          } catch {}
-        }
-      }
-    }
+    notifyUnreadChanged()
   } catch (e) {
-    contacts.value = []
+    if (!silent) contacts.value = []
   } finally {
-    loadingContacts.value = false
+    if (!silent) loadingContacts.value = false
   }
 }
 
-const fetchMessages = async () => {
+const fetchMessages = async (silent = false) => {
   if (!activeContact.value) return
-  loadingMessages.value = true
+  if (!silent) loadingMessages.value = true
   try {
     const params = {}
     if (activeProductId.value) params.productId = activeProductId.value
     const res = await chatAPI.getMessages(activeContact.value, params)
     messages.value = (res.data?.content || []).reverse()
   } catch (e) {
-    messages.value = []
+    if (!silent) messages.value = []
   } finally {
-    loadingMessages.value = false
-    await scrollToBottomAfterRender()
+    if (!silent) loadingMessages.value = false
+    if (!silent) await scrollToBottomAfterRender()
   }
 }
 
@@ -329,6 +300,7 @@ const handleDeleteConversation = async () => {
     contacts.value = contacts.value.filter(item =>
       !(Number(item.contactId) === Number(c.contactId) && sameProduct(item.productId, c.productId))
     )
+    notifyUnreadChanged()
     if (isActiveContact(c)) {
       activeContact.value = null
       activeContactName.value = ''
@@ -382,6 +354,92 @@ const goToUserProfile = async () => {
   }
 }
 
+const getRouteChatTarget = () => {
+  const contactId = route.query.contactId || route.params.contactId
+  if (!contactId) return null
+
+  const targetId = Number(contactId)
+  if (!Number.isFinite(targetId) || targetId <= 0) return null
+
+  const productId = route.query.productId ? Number(route.query.productId) : null
+  const safeProductId = Number.isFinite(productId) && productId > 0 ? productId : null
+  const shouldSendCard = route.query.sendCard === 'true' && !!safeProductId
+
+  return {
+    targetId,
+    productId: safeProductId,
+    contactName: route.query.contactName || `用户${targetId}`,
+    shouldSendCard,
+    key: `${targetId}_${safeProductId || 0}_${shouldSendCard ? 'card' : 'chat'}`
+  }
+}
+
+const openRouteChatFromRoute = async () => {
+  const target = getRouteChatTarget()
+  if (!target) return false
+  if (routeChatKey.value === target.key && activeContact.value) return true
+
+  let c = contacts.value.find(item =>
+    Number(item.contactId) === target.targetId && sameProduct(item.productId, target.productId)
+  )
+
+  // 没有历史消息时也先放一个临时联系人，让“联系卖家”能直接进入聊天。
+  if (!c) {
+    c = {
+      contactId: target.targetId,
+      contactName: target.contactName,
+      productId: target.productId || undefined,
+      productTitle: '',
+      lastMessage: '',
+      lastMessageTime: null,
+      unreadCount: 0
+    }
+    contacts.value.unshift(c)
+  }
+
+  routeChatKey.value = target.key
+  await openChat(c.contactId, c.productId, c.contactName)
+
+  if (target.shouldSendCard) {
+    try {
+      const prodRes = await productAPI.getDetail(target.productId)
+      const p = prodRes.data
+      await chatAPI.send({
+        receiverId: target.targetId,
+        productId: target.productId,
+        content: p?.title || `商品 #${target.productId}`,
+        messageType: 'PRODUCT_CARD',
+        attachmentUrl: p?.images?.split(',')[0] || ''
+      })
+      await fetchMessages()
+      await fetchContacts(true)
+    } catch {}
+  }
+
+  return true
+}
+
+const clearActiveConversation = () => {
+  activeContact.value = null
+  activeContactName.value = ''
+  activeProductId.value = null
+  activeProductTitle.value = ''
+  productInfo.value = null
+  messages.value = []
+  routeChatKey.value = ''
+}
+
+const handleChatRouteEntry = async () => {
+  const target = getRouteChatTarget()
+  if (target) {
+    return openRouteChatFromRoute()
+  }
+
+  clearActiveConversation()
+  await fetchContacts(true)
+  return false
+}
+
 const openChat = async (contactId, productId, fallbackName = '') => {
   activeContact.value = contactId
   activeProductId.value = productId || null
@@ -389,7 +447,42 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
   await fetchMessages()
+  // 立即通知后端已读
+  const readParams = {}
+  if (activeProductId.value) readParams.productId = activeProductId.value
+  await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
+  await fetchContacts(true)
+  notifyUnreadChanged()
   fetchProductInfo(activeProductId.value)
+}
+
+const syncChatSilently = async () => {
+  await fetchContacts(true)
+  if (activeContact.value) {
+    const lastMessageId = messages.value[messages.value.length - 1]?.id
+    await fetchMessages(true)
+    const latestMessageId = messages.value[messages.value.length - 1]?.id
+    if (latestMessageId && Number(latestMessageId) !== Number(lastMessageId)) {
+      await scrollToBottomAfterRender()
+    }
+    const readParams = {}
+    if (activeProductId.value) readParams.productId = activeProductId.value
+    await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
+    notifyUnreadChanged()
+  }
+}
+
+const startSilentSync = () => {
+  if (syncTimer) return
+  syncTimer = setInterval(() => {
+    if (!document.hidden) syncChatSilently()
+  }, 3000)
+}
+
+const stopSilentSync = () => {
+  if (!syncTimer) return
+  clearInterval(syncTimer)
+  syncTimer = null
 }
 
 const sendMessage = async () => {
@@ -424,7 +517,7 @@ const sendMessage = async () => {
     if (res.data) messages.value.push(res.data)
     newMsg.value = ''
     shouldRefocus = true
-    await fetchContacts()
+    await fetchContacts(true)
     await scrollToBottomAfterRender()
   } catch (e) {
     alert(e?.message || '发送失败')
@@ -710,7 +803,62 @@ const sendProductCard = async (p) => {
     pickerProducts.value = []
     pickerSearched.value = false
     await fetchMessages()
+    await fetchContacts(true)
   } catch (e) { alert(e?.message || '发送失败') }
+}
+
+const handleRealtimeEvent = async (browserEvent) => {
+  const event = browserEvent.detail || {}
+  if (event.type === 'MESSAGE_NEW') {
+    await handleIncomingMessage(event.data)
+  } else if (event.type === 'MESSAGE_READ') {
+    handleReadReceipt(event.data)
+  } else if (event.type === 'CHAT_SOCKET_CONNECTED') {
+    await fetchContacts(true)
+  }
+}
+
+const handleIncomingMessage = async (message) => {
+  const isCurrentChat =
+    Number(message.senderId) === Number(activeContact.value) &&
+    sameProduct(message.productId, activeProductId.value)
+
+  if (isCurrentChat) {
+    const exists = messages.value.some(item => Number(item.id) === Number(message.id))
+    if (!exists) messages.value.push(message)
+    await scrollToBottomAfterRender()
+
+    const readParams = {}
+    if (activeProductId.value) readParams.productId = activeProductId.value
+    await chatAPI.markRead(activeContact.value, readParams).catch(() => {})
+    notifyUnreadChanged()
+  }
+
+  await fetchContacts(true)
+}
+
+const handleReadReceipt = (data) => {
+  const readerId = Number(data.readerId)
+  const productId = data.productId ? Number(data.productId) : null
+  const readMessageIds = new Set((data.messageIds || []).map(id => Number(id)))
+
+  messages.value = messages.value.map(message => {
+    const matchedById = readMessageIds.size > 0 && readMessageIds.has(Number(message.id))
+    const matchedByConversation =
+      Number(message.senderId) === Number(myId) &&
+      Number(message.receiverId) === readerId &&
+      sameProduct(message.productId, productId)
+    const shouldMarkRead = matchedById || (readMessageIds.size === 0 && matchedByConversation)
+    return shouldMarkRead ? { ...message, isRead: true } : message
+  })
+
+  contacts.value = contacts.value.map(contact => {
+    const shouldMarkRead =
+      Number(contact.contactId) === readerId &&
+      sameProduct(contact.productId, productId) &&
+      contact.lastMessageIsMine
+    return shouldMarkRead ? { ...contact, lastMessageIsRead: true } : contact
+  })
 }
 
 const reportMessage = (msg) => {
@@ -734,14 +882,35 @@ const formatMessageTime = (value) => {
   return String(value).replace('T', ' ').slice(5, 16)
 }
 
-onMounted(() => {
-  fetchContacts()
+onMounted(async () => {
+  await fetchContacts()
+  await handleChatRouteEntry()
   focusUserSearchInput()
+  window.addEventListener('chat-realtime', handleRealtimeEvent)
+  startSilentSync()
 })
 
-onActivated(() => {
+onActivated(async () => {
   focusUserSearchInput()
+  await handleChatRouteEntry()
+  startSilentSync()
 })
+
+onDeactivated(() => {
+  stopSilentSync()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('chat-realtime', handleRealtimeEvent)
+  stopSilentSync()
+})
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await handleChatRouteEntry()
+  }
+)
 </script>
 
 <style scoped>
@@ -761,7 +930,7 @@ onActivated(() => {
 .contact-product { display: block; max-width: 160px; margin-top: 3px; color: #1890ff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .muted-tag { display: inline-block; margin-left: 6px; padding: 0 4px; font-size: 10px; color: #faad14; border: 1px solid #faad14; border-radius: 2px; vertical-align: middle; }
 .last-msg { font-size: 12px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; margin-top: 4px; }
-.read-tag { font-size: 10px; color: #bbb; margin-left: 4px; }
+.read-tag { font-size: 10px; color: #bbb; margin-left: 8px; white-space: nowrap; }
 .read-tag.read { color: #52c41a; }
 .contact-meta { text-align: right; flex: 0 0 auto; }
 .time { font-size: 11px; color: #999; }

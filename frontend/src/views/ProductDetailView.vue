@@ -146,15 +146,27 @@ const fetchProduct = async () => {
   }
 }
 
-const contactSeller = () => router.push({
-  path: '/chat',
-  query: {
-    contactId: product.value?.sellerId,
-    contactName: product.value?.sellerName,
-    productId: props.id,
-    sendCard: 'true'
+const contactSeller = () => {
+  if (!currentUser) {
+    router.push({ path: '/login', query: { redirect: `/product/${props.id}` } })
+    return
   }
-})
+  if (!product.value?.sellerId) {
+    alert('卖家信息加载失败，暂时无法发起聊天')
+    return
+  }
+
+  router.push({
+    path: '/chat',
+    query: {
+      contactId: product.value.sellerId,
+      contactName: product.value.sellerName || `用户${product.value.sellerId}`,
+      productId: props.id,
+      sendCard: 'true',
+      t: Date.now()
+    }
+  })
+}
 const buyNow = () => { confirmBuyVisible.value = true }
 const handleBuyConfirm = async () => {
   try {

@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatService {
 
+    private static final String EVENT_MESSAGE_NEW = "MESSAGE_NEW";
+    private static final String EVENT_MESSAGE_READ = "MESSAGE_READ";
+
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
@@ -68,7 +71,10 @@ public class ChatService {
 
         message = messageRepository.save(message);
         MessageResponse response = toResponse(message);
-        messagingTemplate.convertAndSend("/queue/chat/" + receiverId, response);
+        messagingTemplate.convertAndSend("/queue/chat/" + receiverId, Map.of(
+                "type", EVENT_MESSAGE_NEW,
+                "data", response
+        ));
         return response;
     }
 
@@ -86,6 +92,7 @@ public class ChatService {
             if (!unreadMessages.isEmpty()) {
                 unreadMessages.forEach(m -> m.setIsRead(true));
                 messageRepository.saveAll(unreadMessages);
+                notifyReadReceipt(userId, contactId, productId, unreadMessages);
             }
         }
 
@@ -135,7 +142,14 @@ public class ChatService {
 
     @Transactional
     public int markConversationAsRead(Long userId, Long contactId, Long productId) {
-        return messageRepository.markConversationAsRead(userId, contactId, productId);
+        List<Message> unreadMessages = messageRepository.findUnreadConversationMessages(userId, contactId, productId);
+        if (unreadMessages.isEmpty()) {
+            return 0;
+        }
+        unreadMessages.forEach(m -> m.setIsRead(true));
+        messageRepository.saveAll(unreadMessages);
+        notifyReadReceipt(userId, contactId, productId, unreadMessages);
+        return unreadMessages.size();
     }
 
     @Transactional
@@ -145,6 +159,22 @@ public class ChatService {
 
     private long countUnread(Long userId, Long contactId, Long productId) {
         return messageRepository.countUnreadByContact(userId, contactId, productId);
+    }
+
+    private void notifyReadReceipt(Long readerId, Long senderId, Long productId, List<Message> readMessages) {
+        List<Long> messageIds = readMessages.stream()
+                .map(Message::getId)
+                .collect(Collectors.toList());
+        messagingTemplate.convertAndSend("/queue/chat/" + senderId, Map.of(
+                "type", EVENT_MESSAGE_READ,
+                "data", Map.of(
+                        "readerId", readerId,
+                        "senderId", senderId,
+                        "productId", productId == null ? 0 : productId,
+                        "messageIds", messageIds,
+                        "readCount", messageIds.size()
+                )
+        ));
     }
 
     private MessageResponse toResponse(Message message) {

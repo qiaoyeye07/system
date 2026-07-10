@@ -13,13 +13,74 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeUnmount, watch } from 'vue'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppNav from './components/layout/AppNav.vue'
+import { useUserStore } from './store/user.js'
 
-const router = useRouter()
-const isLoggedIn = computed(() => !!localStorage.getItem('token'))
+const store = useUserStore()
+let stompClient = null
+let chatSubscription = null
+
+const dispatchRealtimeEvent = (event) => {
+  window.dispatchEvent(new CustomEvent('chat-realtime', { detail: event }))
+}
+
+const connectRealtime = () => {
+  const userId = store.state.user?.id
+  if (!userId || stompClient?.active) return
+
+  stompClient = new Client({
+    reconnectDelay: 5000,
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
+    webSocketFactory: () => new SockJS('/ws/chat'),
+    onConnect: () => {
+      chatSubscription?.unsubscribe()
+      chatSubscription = stompClient.subscribe(`/queue/chat/${userId}`, frame => {
+        try {
+          dispatchRealtimeEvent(JSON.parse(frame.body))
+        } catch {
+          // Ignore malformed realtime payloads and keep the connection alive.
+        }
+      })
+      dispatchRealtimeEvent({ type: 'CHAT_SOCKET_CONNECTED' })
+    },
+    onStompError: () => {
+      dispatchRealtimeEvent({ type: 'CHAT_SOCKET_ERROR' })
+    },
+    onWebSocketClose: () => {
+      dispatchRealtimeEvent({ type: 'CHAT_SOCKET_CLOSED' })
+    }
+  })
+
+  stompClient.activate()
+}
+
+const disconnectRealtime = () => {
+  chatSubscription?.unsubscribe()
+  chatSubscription = null
+  if (stompClient) {
+    stompClient.deactivate()
+    stompClient = null
+  }
+}
+
+watch(
+  () => store.state.user?.id,
+  (userId, oldUserId) => {
+    if (oldUserId && oldUserId !== userId) disconnectRealtime()
+    if (userId) connectRealtime()
+    else disconnectRealtime()
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  disconnectRealtime()
+})
 </script>
 
 <style>

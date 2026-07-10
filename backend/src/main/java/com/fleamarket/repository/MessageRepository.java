@@ -34,6 +34,14 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     long countByReceiverIdAndIsReadFalse(Long receiverId);
 
+    @Query("SELECT m FROM Message m WHERE m.receiver.id = :receiverId " +
+           "AND m.sender.id = :senderId " +
+           "AND (:productId IS NULL OR m.product.id = :productId) " +
+           "AND m.isRead = false")
+    List<Message> findUnreadConversationMessages(@Param("receiverId") Long receiverId,
+                                                 @Param("senderId") Long senderId,
+                                                 @Param("productId") Long productId);
+
     @Modifying
     @Query("UPDATE Message m SET m.isRead = true WHERE m.receiver.id = :receiverId " +
            "AND m.sender.id = :senderId " +
