@@ -30,4 +30,9 @@ public class RatingController {
     public ApiResponse<List<RatingResponse>> getUserRatings(@PathVariable Long id) {
         return ApiResponse.success(ratingService.getUserRatings(id));
     }
+
+    @GetMapping("/ratings/by-order/{orderId}")
+    public ApiResponse<List<RatingResponse>> getOrderRatings(@PathVariable Long orderId) {
+        return ApiResponse.success(ratingService.getOrderRatings(orderId));
+    }
 }

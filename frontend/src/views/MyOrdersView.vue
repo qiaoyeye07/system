@@ -97,14 +97,21 @@ const fetchOrders = async () => {
   loading.value = true
   try {
     const params = { role: role.value, size: 50 }
-    if (status.value !== 'ALL') params.status = status.value
     let allOrders = []
     if (orderType.value === 'all' || orderType.value === 'CASH') {
+      if (status.value !== 'ALL') params.status = status.value
       const r = await orderAPI.getMyOrders(params)
       allOrders.push(...(r.data?.content || []).map(o => ({ ...o, _type: 'CASH' })))
     }
     if (orderType.value === 'all' || orderType.value === 'SWAP') {
-      const r = await swapAPI.getMySwaps(params)
+      // 交换订单已发货对应 BOTH_SHIPPED
+      const swapParams = { role: role.value, size: 50 }
+      if (status.value === 'SHIPPED') {
+        swapParams.status = 'BOTH_SHIPPED'
+      } else if (status.value !== 'ALL') {
+        swapParams.status = status.value
+      }
+      const r = await swapAPI.getMySwaps(swapParams)
       allOrders.push(...(r.data?.content || []).map(o => ({ ...o, _type: 'SWAP' })))
     }
     orders.value = allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

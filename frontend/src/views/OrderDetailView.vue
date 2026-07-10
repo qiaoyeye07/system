@@ -23,6 +23,12 @@
         <p>{{ order.logisticsInfo }}</p>
       </div>
 
+      <div v-if="myRating" class="detail-card">
+        <h4>我的评价</h4>
+        <p class="rated-info">{{ '★'.repeat(myRating.score) }}{{ '☆'.repeat(5 - myRating.score) }}</p>
+        <p v-if="myRating.comment" class="rated-comment">{{ myRating.comment }}</p>
+      </div>
+
       <div class="detail-card">
         <h4>操作</h4>
         <div class="action-buttons">
@@ -50,7 +56,7 @@
             <p class="refund-info dispute-info">已拒绝退款申请，等待买家处理</p>
             <button class="btn-warn" @click="showEscalateDialog = true">申请管理员介入</button>
           </template>
-          <template v-if="order.status === 'PAID' && isSeller && !order.cancelReason">
+          <template v-if="order.status === 'PAID' && isSeller && !order.refundReason && !order.cancelReason">
             <button class="btn-primary" @click="showShipDialog = true">确认发货</button>
             <button class="btn-danger" @click="confirmCancel">取消订单</button>
           </template>
@@ -77,7 +83,7 @@
           <template v-if="order.status === 'DISPUTE' && isSeller">
             <p class="refund-info dispute-info">买家已申请管理员介入，等待管理员裁决</p>
           </template>
-          <template v-if="order.status === 'COMPLETED' && isParticipant">
+          <template v-if="order.status === 'COMPLETED' && isParticipant && !myRating">
             <button @click="showRating = true">评价</button>
           </template>
           <template v-if="isDeletable">
@@ -184,6 +190,8 @@ const confirmAction = ref(null)
 const shipInfo = ref('')
 const ratingScore = ref(5)
 const ratingComment = ref('')
+const hasRated = ref(false)
+const myRating = ref(null)
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
@@ -200,14 +208,22 @@ const sellerRejectedRefund = computed(() =>
 const fetchOrder = async () => {
   loading.value = true
   error.value = ''
+  myRating.value = null
   try {
     const res = await orderAPI.getDetail(props.id)
     order.value = res.data
-    // 也加载操作日志用于判断卖家是否已拒绝退款
     try {
       const logRes = await orderAPI.getLogs(props.id)
       orderLogs.value = logRes.data || []
     } catch (e) { orderLogs.value = [] }
+    if (res.data?.status === 'COMPLETED') {
+      try {
+        const ratingsRes = await ratingAPI.getByOrder(props.id)
+        const ratings = ratingsRes.data || []
+        const mine = ratings.find(r => r.raterId === user?.id)
+        if (mine) myRating.value = { score: mine.score, comment: mine.comment }
+      } catch (e) { /* ignore */ }
+    }
   } catch (e) {
     try {
       const res = await swapAPI.getDetail(props.id)
@@ -278,10 +294,11 @@ const doCancelRefund = async () => {
 const doRating = async () => {
   try {
     await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value, comment: ratingComment.value.trim() })
-    showRating.value = false
-    ratingComment.value = ''
+    myRating.value = { score: ratingScore.value, comment: ratingComment.value.trim() }
     showMsg('评价已提交')
-  } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  } catch (e) { showMsg(e?.message || '评价失败', 'error') }
+  showRating.value = false
+  ratingComment.value = ''
 }
 const handleConfirm = () => { if (confirmAction.value) confirmAction.value() }
 const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除该订单？'; confirmAction.value = doDelete; confirmVisible.value = true }
@@ -337,4 +354,6 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; resize: vertical; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; }
+.rated-info { font-size: 14px; color: #fa8c16; margin-bottom: 4px; }
+.rated-comment { font-size: 13px; color: #666; }
 </style>
