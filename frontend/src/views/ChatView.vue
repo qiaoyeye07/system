@@ -22,7 +22,7 @@
               <strong>{{ c.contactName }}</strong>
               <span v-if="c.productTitle" class="contact-product">{{ c.productTitle }}</span>
               <span v-if="isMuted(c)" class="muted-tag">免打扰</span>
-              <p class="last-msg">{{ c.lastMessage }}<span v-if="c.lastMessageIsMine" class="read-tag" :class="{ read: c.lastMessageIsRead }">{{ c.lastMessageIsRead ? '已读' : '未读' }}</span></p>
+              <p class="last-msg">{{ c.lastMessage }}<span v-if="c.lastMessageIsMine && !c.unreadCount" class="read-tag" :class="{ read: c.lastMessageIsRead }">{{ c.lastMessageIsRead ? '已读' : '未读' }}</span></p>
             </div>
             <div class="contact-meta">
               <span class="time">{{ formatTime(c.lastMessageTime) }}</span>
@@ -814,16 +814,26 @@ const connectWebSocket = () => {
       const event = JSON.parse(body)
       if (event.type === 'MESSAGE_NEW') {
         const msg = event.data
-        if (activeContact.value && isActiveMessage(msg)) {
-          messages.value.push({ ...msg, isRead: true })
-          const params = {}; if (activeProductId.value) params.productId = activeProductId.value
-          chatAPI.markRead(activeContact.value, params).catch(() => {})
+        // 立刻更新本地联系人列表
+        const contactId = Number(msg.senderId) === Number(myId) ? msg.receiverId : msg.senderId
+        const existing = contacts.value.find(c => Number(c.contactId) === contactId)
+        if (existing) {
+          existing.lastMessage = msg.content.length > 50 ? msg.content.slice(0, 50) + '...' : msg.content
+          existing.lastMessageTime = msg.createdAt
+          existing.lastMessageIsMine = false
+          existing.lastMessageIsRead = false
+          // 不自动标记已读——只有点击对话框才标记
+          if (activeContact.value && isActiveMessage(msg)) {
+            existing.unreadCount = 0
+          } else {
+            existing.unreadCount = (existing.unreadCount || 0) + 1
+          }
         }
-        // 延迟刷新：等后端事务提交后再拉数据
-        setTimeout(() => {
-          refreshContactsSilent()
-          window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
-        }, 500)
+        if (activeContact.value && isActiveMessage(msg)) {
+          messages.value.push({ ...msg, isRead: false })
+        }
+        window.dispatchEvent(new CustomEvent('chat-unread-delta', { detail: 1 }))
+        setTimeout(refreshContactsSilent, 1000)
       } else if (event.type === 'MESSAGE_READ') {
         // 对方读了你的消息 → 本地立刻把 isRead 改为 true
         const ids = event.data?.messageIds || []
