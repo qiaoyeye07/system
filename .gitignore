@@ -24,7 +24,7 @@ Thumbs.db
 .env.local
 
 # Uploads
-uploads/
+#uploads/
 
 # Logs
 *.log
