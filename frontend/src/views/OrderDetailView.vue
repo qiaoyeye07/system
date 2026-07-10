@@ -243,7 +243,7 @@ const doPay = async () => {
 }
 const confirmShip = () => { confirmMsg.value = '确认已将此商品发出？'; confirmAction.value = doShip; confirmVisible.value = true }
 const doShip = async () => {
-  try { await orderAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; confirmVisible.value = false; showMsg('发货成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') }
+  try { await orderAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showMsg('发货成功'); fetchOrder() } catch (e) { showMsg(e?.message || '操作失败', 'error') } finally { showShipDialog.value = false; confirmVisible.value = false }
 }
 const confirmReceive = () => { confirmMsg.value = '确认收货后无法退回，请确认已收到货物。'; confirmAction.value = doReceive; confirmVisible.value = true }
 const doReceive = async () => {

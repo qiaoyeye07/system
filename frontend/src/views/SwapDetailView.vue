@@ -29,6 +29,11 @@
         <h4>意向说明</h4>
         <p>{{ order.swapNote }}</p>
       </div>
+      <div v-if="myRating" class="detail-card">
+        <h4>我的评价</h4>
+        <p class="rated-info">{{ '★'.repeat(myRating.score) }}{{ '☆'.repeat(5 - myRating.score) }}</p>
+        <p v-if="myRating.comment" class="rated-comment">{{ myRating.comment }}</p>
+      </div>
       <div class="detail-card">
         <h4>操作</h4>
         <div class="action-buttons">
@@ -39,14 +44,20 @@
           <template v-if="order.status === 'PENDING_CONFIRM' && isBuyer">
             <button @click="doWithdraw">撤回提议</button>
           </template>
-          <template v-if="order.status === 'CONFIRMED'">
+          <template v-if="order.status === 'CONFIRMED' && !hasShipped">
             <button class="btn-primary" @click="showShipDialog = true">确认发货</button>
             <button @click="doCancelSwap">申请取消</button>
           </template>
-          <template v-if="order.status === 'BOTH_SHIPPED'">
+          <template v-if="order.status === 'CONFIRMED' && hasShipped">
+            <p class="refund-info">已发货，等待对方发货</p>
+          </template>
+          <template v-if="order.status === 'BOTH_SHIPPED' && !hasReceived">
             <button class="btn-primary" @click="confirmReceive">确认收货</button>
           </template>
-          <template v-if="order.status === 'COMPLETED' && isParticipant">
+          <template v-if="order.status === 'BOTH_SHIPPED' && hasReceived">
+            <p class="refund-info">已确认收货，等待对方确认</p>
+          </template>
+          <template v-if="order.status === 'COMPLETED' && isParticipant && !myRating">
             <button @click="showRating = true">评价</button>
           </template>
           <template v-if="isDeletable">
@@ -62,7 +73,7 @@
           <div class="form-group"><label>物流/自提信息 *</label><input v-model="shipInfo" type="text" /></div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="showShipDialog = false">取消</button>
-            <button class="btn-primary" @click="confirmShip">确认</button>
+            <button class="btn-primary" @click="doShip" :disabled="!shipInfo.trim()">确认</button>
           </div>
         </div>
       </div>
@@ -91,7 +102,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { swapAPI, ratingAPI } from '../api/modules.js'
+import { swapAPI, ratingAPI, orderAPI } from '../api/modules.js'
 import LoadingState from '../components/common/LoadingState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import OrderStatusTag from '../components/common/OrderStatusTag.vue'
@@ -110,9 +121,11 @@ const shipInfo = ref('')
 const showRating = ref(false)
 const ratingScore = ref(5)
 const ratingComment = ref('')
+const myRating = ref(null)
 const confirmVisible = ref(false)
 const confirmMsg = ref('')
 const confirmAction = ref(null)
+const orderLogs = ref([])
 
 const userStr = localStorage.getItem('user')
 const user = userStr ? JSON.parse(userStr) : null
@@ -122,12 +135,31 @@ const isParticipant = computed(() => isBuyer.value || isSeller.value)
 const isDeletable = computed(() =>
   isParticipant.value && ['CANCELLED', 'COMPLETED', 'REJECTED'].includes(order.value?.status)
 )
+const hasShipped = computed(() =>
+  orderLogs.value.some(log => log.actionType === 'SHIP' && log.operatorId === user?.id)
+)
+const hasReceived = computed(() =>
+  orderLogs.value.some(log => log.actionType === 'RECEIVE' && log.operatorId === user?.id)
+)
 
 const showMsg = (text, type = 'success') => { msg.value = text; msgType.value = type; setTimeout(() => msg.value = '', 3000) }
 
 const fetchOrder = async () => {
   loading.value = true
-  try { const res = await swapAPI.getDetail(props.id); order.value = res.data } catch (e) { error.value = e?.message } finally { loading.value = false }
+  myRating.value = null
+  try {
+    const res = await swapAPI.getDetail(props.id)
+    order.value = res.data
+    try { const logRes = await orderAPI.getLogs(props.id); orderLogs.value = logRes.data || [] } catch (e) { orderLogs.value = [] }
+    if (res.data?.status === 'COMPLETED') {
+      try {
+        const ratingsRes = await ratingAPI.getByOrder(props.id)
+        const ratings = ratingsRes.data || []
+        const mine = ratings.find(r => r.raterId === user?.id)
+        if (mine) myRating.value = { score: mine.score, comment: mine.comment }
+      } catch (e) { /* ignore */ }
+    }
+  } catch (e) { error.value = e?.message } finally { loading.value = false }
 }
 const confirmAgree = () => { confirmMsg.value = '同意交换后双方商品将下架。确认同意？'; confirmAction.value = doAgree; confirmVisible.value = true }
 const doAgree = async () => { try { await swapAPI.agree(props.id); confirmVisible.value = false; showMsg('已同意交换'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
@@ -135,17 +167,18 @@ const confirmReject = () => { confirmMsg.value = '确认拒绝此交换提议？
 const doReject = async () => { try { await swapAPI.reject(props.id); confirmVisible.value = false; showMsg('已拒绝'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doWithdraw = async () => { try { await swapAPI.withdraw(props.id); showMsg('已撤回'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const confirmShip = () => { confirmMsg.value = '确认已发货？'; confirmAction.value = doShip; confirmVisible.value = true }
-const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showShipDialog.value = false; confirmVisible.value = false; showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
+const doShip = async () => { try { await swapAPI.ship(props.id, { logisticsInfo: shipInfo.value }); showMsg('已发货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } finally { showShipDialog.value = false; confirmVisible.value = false } }
 const confirmReceive = () => { confirmMsg.value = '确认已收到货物？收货后不可退回。'; confirmAction.value = doReceive; confirmVisible.value = true }
 const doReceive = async () => { try { await swapAPI.receive(props.id); confirmVisible.value = false; showMsg('已收货'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doCancelSwap = async () => { try { await swapAPI.cancel(props.id, { reason: '申请取消' }); showMsg('取消申请已提交'); fetchOrder() } catch (e) { showMsg(e?.message, 'error') } }
 const doRating = async () => {
   try {
     await ratingAPI.submit({ orderId: Number(props.id), score: ratingScore.value, comment: ratingComment.value.trim() })
-    showRating.value = false
-    ratingComment.value = ''
+    myRating.value = { score: ratingScore.value, comment: ratingComment.value.trim() }
     showMsg('评价已提交')
   } catch (e) { showMsg(e?.message || '评价失败', 'error') }
+  showRating.value = false
+  ratingComment.value = ''
 }
 const confirmDelete = () => { confirmMsg.value = '删除后无法恢复，确认删除？'; confirmAction.value = doDelete; confirmVisible.value = true }
 const doDelete = async () => {
@@ -186,4 +219,6 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 4px; }
 .btn-delete { color: var(--text-muted) !important; border-color: var(--border) !important; font-size: 12px !important; padding: 4px 12px !important; }
+.rated-info { font-size: 14px; color: #fa8c16; margin-bottom: 4px; }
+.rated-comment { font-size: 13px; color: #666; }
 </style>

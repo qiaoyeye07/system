@@ -523,12 +523,25 @@ public class OrderService {
         validateStatus(order, "CONFIRMED", "发货");
 
         boolean isBuyer = order.getBuyer().getId().equals(userId);
+        Long otherUserId = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+
+        // 检查当前用户是否已经发过货
+        List<OrderLog> shipLogs = orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+        boolean alreadyShipped = shipLogs.stream()
+                .anyMatch(log -> log.getActionType() == ActionType.SHIP
+                        && log.getOperator() != null
+                        && log.getOperator().getId().equals(userId));
+        if (alreadyShipped) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "您已经发过货了");
+        }
+
         String detail = (isBuyer ? "买家(交换方)" : "卖家(交换方)") + "发货：" + logisticsInfo;
 
-        // 检查双方是否都已发货
-        List<OrderLog> shipLogs = orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+        // 检查对方是否已经发货
         boolean otherShipped = shipLogs.stream()
-                .anyMatch(log -> log.getActionType() == ActionType.SHIP);
+                .anyMatch(log -> log.getActionType() == ActionType.SHIP
+                        && log.getOperator() != null
+                        && log.getOperator().getId().equals(otherUserId));
 
         if (otherShipped) {
             order.setStatus("BOTH_SHIPPED");
@@ -540,7 +553,7 @@ public class OrderService {
                 ActionType.SHIP, "CONFIRMED", newStatus, detail);
 
         // 通知对方：已发货
-        Long otherId = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+        Long otherId = otherUserId;
         String who = isBuyer ? "买家" : "卖家";
         sendOrderCardMessage(order, userId, otherId,
                 who + "已发货" + (logisticsInfo != null ? "：" + logisticsInfo : ""));
@@ -554,12 +567,25 @@ public class OrderService {
         validateStatus(order, "BOTH_SHIPPED", "收货");
 
         boolean isBuyer = order.getBuyer().getId().equals(userId);
+        Long otherUserId = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+
+        // 检查当前用户是否已经收过货
+        List<OrderLog> logs = orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+        boolean alreadyReceived = logs.stream()
+                .anyMatch(log -> log.getActionType() == ActionType.RECEIVE
+                        && log.getOperator() != null
+                        && log.getOperator().getId().equals(userId));
+        if (alreadyReceived) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "您已经确认收货了");
+        }
+
         String detail = (isBuyer ? "买家" : "卖家") + "确认收货";
 
         // 检查对方是否也已收货
-        List<OrderLog> logs = orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
         boolean otherReceived = logs.stream()
-                .anyMatch(log -> log.getActionType() == ActionType.RECEIVE);
+                .anyMatch(log -> log.getActionType() == ActionType.RECEIVE
+                        && log.getOperator() != null
+                        && log.getOperator().getId().equals(otherUserId));
 
         if (otherReceived) {
             order.setStatus("COMPLETED");
@@ -572,7 +598,7 @@ public class OrderService {
                 ActionType.RECEIVE, "BOTH_SHIPPED", newStatus, detail);
 
         // 通知对方：已收货
-        Long otherId2 = isBuyer ? order.getSeller().getId() : order.getBuyer().getId();
+        Long otherId2 = otherUserId;
         String who2 = isBuyer ? "买家" : "卖家";
         sendOrderCardMessage(order, userId, otherId2,
                 who2 + "已确认收货");
