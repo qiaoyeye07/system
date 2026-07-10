@@ -46,6 +46,7 @@ export const orderAPI = {
   pay: (id) => api.post(`/orders/${id}/pay`),
   ship: (id, data) => api.post(`/orders/${id}/ship`, data),
   receive: (id) => api.post(`/orders/${id}/receive`),
+  complete: (id) => api.post(`/orders/${id}/complete`),
   cancel: (id, data) => api.post(`/orders/${id}/cancel`, data),
   agreeCancel: (id) => api.post(`/orders/${id}/agree-cancel`),
   rejectCancel: (id) => api.post(`/orders/${id}/reject-cancel`),
