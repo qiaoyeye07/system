@@ -56,6 +56,13 @@ public class OrderController {
         return ApiResponse.success("收货成功，交易即将完成", order);
     }
 
+    @PostMapping("/orders/{id}/complete")
+    public ApiResponse<OrderResponse> complete(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        OrderResponse order = orderService.completeOrder(userId, id);
+        return ApiResponse.success("交易已完成", order);
+    }
+
     @PostMapping("/orders/{id}/cancel")
     public ApiResponse<OrderResponse> cancelByBuyer(@PathVariable Long id,
                                                      @Valid @RequestBody CancelOrderRequest request) {

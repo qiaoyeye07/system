@@ -108,20 +108,26 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse completeOrder(Long buyerId, Long orderId) {
+        Order order = getOrder(orderId, buyerId, true);
+        validateStatus(order, "RECEIVED", "确认完成");
+
+        order.setStatus("COMPLETED");
+        orderRepository.save(order);
+        createLog(order, order.getBuyer(), ActionType.RECEIVE, "RECEIVED", "COMPLETED",
+                "买家确认完成，交易结束");
+
+        return toResponse(order);
+    }
+
+    @Transactional
     public OrderResponse cancelByBuyer(Long buyerId, Long orderId, String reason) {
         Order order = getOrder(orderId, buyerId, true);
 
         if ("PENDING_PAY".equals(order.getStatus())) {
             return cancelOrder(order, order.getBuyer(), reason);
-        } else if ("PAID".equals(order.getStatus())) {
-            order.setCancelReason(reason);
-            orderRepository.save(order);
-            createLog(order, order.getBuyer(), ActionType.CANCEL, order.getStatus(), order.getStatus(),
-                    "买家申请取消：" + reason);
-            return toResponse(order);
-        } else {
-            throw new BusinessException(ErrorCode.CANNOT_CANCEL_SHIPPED);
         }
+        throw new BusinessException(ErrorCode.CANNOT_CANCEL_SHIPPED);
     }
 
     @Transactional
@@ -201,12 +207,20 @@ public class OrderService {
 
     @Transactional
     public OrderResponse requestRefund(Long buyerId, Long orderId, String reason) {
-        Order order = getOrder(orderId, buyerId, true);
-        validateStatus(order, "RECEIVED", "申请退款");
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getBuyer().getId().equals(buyerId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        String status = order.getStatus();
+        if (!"RECEIVED".equals(status) && !"SHIPPED".equals(status) && !"PAID".equals(status)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持申请退款");
+        }
 
         order.setRefundReason(reason);
         orderRepository.save(order);
-        createLog(order, order.getBuyer(), ActionType.REQUEST_REFUND, order.getStatus(), order.getStatus(),
+        createLog(order, order.getBuyer(), ActionType.REQUEST_REFUND, status, status,
                 "买家申请退款：" + reason);
 
         return toResponse(order);
@@ -214,8 +228,13 @@ public class OrderService {
 
     @Transactional
     public OrderResponse sellerAgreeRefund(Long sellerId, Long orderId) {
-        Order order = getOrder(orderId, sellerId, false);
-        if (!"RECEIVED".equals(order.getStatus()) || order.getRefundReason() == null) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getSeller().getId().equals(sellerId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        if (order.getRefundReason() == null) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有待处理的退款申请");
         }
 
@@ -224,15 +243,19 @@ public class OrderService {
 
     @Transactional
     public OrderResponse sellerRejectRefund(Long sellerId, Long orderId) {
-        Order order = getOrder(orderId, sellerId, false);
-        if (!"RECEIVED".equals(order.getStatus()) || order.getRefundReason() == null) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getSeller().getId().equals(sellerId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        if (order.getRefundReason() == null) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有待处理的退款申请");
         }
 
-        // 卖家拒绝退款，状态保持 RECEIVED，买家可选择是否申请管理员介入
         orderRepository.save(order);
-        createLog(order, order.getSeller(), ActionType.REJECT_REFUND, "RECEIVED", "RECEIVED",
-                "卖家拒绝退款，买家可申请管理员介入");
+        createLog(order, order.getSeller(), ActionType.REJECT_REFUND, order.getStatus(), order.getStatus(),
+                "卖家拒绝退款");
 
         return toResponse(order);
     }
@@ -247,16 +270,14 @@ public class OrderService {
         if (!isBuyer && !isSeller) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
-        if (!"RECEIVED".equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前状态不支持申请管理员介入");
-        }
 
+        String oldStatus = order.getStatus();
         String who = isBuyer ? "买家" : "卖家";
         order.setStatus("DISPUTE");
         order.setRefundReason(reason);
         orderRepository.save(order);
         createLog(order, isBuyer ? order.getBuyer() : order.getSeller(),
-                ActionType.REQUEST_REFUND, "RECEIVED", "DISPUTE",
+                ActionType.REQUEST_REFUND, oldStatus, "DISPUTE",
                 who + "申请管理员介入：" + reason);
 
         return toResponse(order);
@@ -264,16 +285,20 @@ public class OrderService {
 
     @Transactional
     public OrderResponse cancelRefund(Long buyerId, Long orderId) {
-        Order order = getOrder(orderId, buyerId, true);
-        validateStatus(order, "RECEIVED", "取消退款");
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
+        if (!order.getBuyer().getId().equals(buyerId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         if (order.getRefundReason() == null) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "当前没有进行中的退款申请");
         }
 
+        String oldStatus = order.getStatus();
         order.setRefundReason(null);
         orderRepository.save(order);
-        createLog(order, order.getBuyer(), ActionType.CANCEL, "RECEIVED", "RECEIVED",
+        createLog(order, order.getBuyer(), ActionType.CANCEL, oldStatus, oldStatus,
                 "买家取消退款申请");
 
         return toResponse(order);
