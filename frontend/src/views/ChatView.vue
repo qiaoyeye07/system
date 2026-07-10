@@ -170,7 +170,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onActivated, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onActivated, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import SockJS from 'sockjs-client'
 defineOptions({ name: 'ChatView' })
 import { useRoute, useRouter } from 'vue-router'
 import { chatAPI, reportAPI, productAPI, orderAPI, swapAPI, userAPI, ratingAPI } from '../api/modules.js'
@@ -398,12 +399,15 @@ const openChat = async (contactId, productId, fallbackName = '') => {
   const c = contacts.value.find(item => Number(item.contactId) === Number(contactId) && sameProduct(item.productId, productId))
   activeContactName.value = c?.contactName || fallbackName
   activeProductTitle.value = c?.productTitle || ''
-  // 立刻清零红点，不需要等 API 返回
+  // 立刻清零：联系人红点 + 总未读徽章
   if (c && c.unreadCount > 0) {
+    const delta = c.unreadCount
     c.unreadCount = 0
     const params = {}; if (productId) params.productId = productId
     chatAPI.markRead(contactId, params).catch(() => {})
-    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+    // 先本地减总未读数，再异步核对
+    window.dispatchEvent(new CustomEvent('chat-unread-delta', { detail: -delta }))
+    setTimeout(() => window.dispatchEvent(new CustomEvent('chat-unread-refresh')), 1000)
   }
   await fetchMessages()
   fetchProductInfo(activeProductId.value)
@@ -787,24 +791,91 @@ const formatMessageTime = (value) => {
   return String(value).replace('T', ' ').slice(5, 16)
 }
 
+// ── 轻量 WebSocket（基于 SockJS + STOMP）──
+let wsSocket = null
+const connectWebSocket = () => {
+  if (!myId) return
+  const sock = new SockJS('/ws/chat')
+  wsSocket = sock
+  let connected = false
+
+  sock.onopen = () => {
+    sock.send('CONNECT\naccept-version:1.2\n\n\0')
+    sock.send(`SUBSCRIBE\ndestination:/queue/chat/${myId}\nid:sub-0\n\n\0`)
+    connected = true
+    window.dispatchEvent(new CustomEvent('chat-realtime', { detail: { type: 'CHAT_SOCKET_CONNECTED' } }))
+  }
+
+  sock.onmessage = (e) => {
+    const text = e.data
+    if (!text.startsWith('MESSAGE')) return
+    const bodyStart = text.indexOf('\n\n')
+    if (bodyStart === -1) return
+    let body = text.slice(bodyStart + 2)
+    if (body.endsWith('\0')) body = body.slice(0, -1)
+    try {
+      const event = JSON.parse(body)
+      if (event.type === 'MESSAGE_NEW') {
+        const msg = event.data
+        if (activeContact.value && isActiveMessage(msg)) {
+          messages.value.push({ ...msg, isRead: true })
+          const params = {}; if (activeProductId.value) params.productId = activeProductId.value
+          chatAPI.markRead(activeContact.value, params).catch(() => {})
+        }
+        refreshContactsSilent()
+        window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
+      } else if (event.type === 'MESSAGE_READ') {
+        // 对方读了你的消息 → 本地立刻把 isRead 改为 true
+        const ids = event.data?.messageIds || []
+        if (ids.length > 0) {
+          messages.value.forEach(m => {
+            if (ids.includes(m.id)) m.isRead = true
+          })
+        }
+        refreshContactsSilent()
+      }
+    } catch (e) { /* ignore parse errors */ }
+  }
+
+  sock.onclose = () => {
+    connected = false
+    setTimeout(connectWebSocket, 5000)
+  }
+}
+
+const isActiveMessage = (msg) => {
+  const related = Number(msg.senderId) === Number(myId) ? msg.receiverId : msg.senderId
+  return Number(related) === Number(activeContact.value)
+}
+
+const refreshContactsSilent = async () => {
+  try {
+    const res = await chatAPI.getContacts()
+    contacts.value = res.data || []
+  } catch (e) { /* silent */ }
+}
+
+const disconnectWebSocket = () => {
+  if (wsSocket) { wsSocket.close(); wsSocket = null }
+}
+
 onMounted(() => {
   fetchContacts()
+  focusUserSearchInput()
+  connectWebSocket()
+})
+
+onBeforeUnmount(() => {
+  disconnectWebSocket()
+})
+
+onActivated(() => {
   focusUserSearchInput()
 })
 
 onActivated(() => {
   routeChatOpened.value = false
-  fetchContacts().then(async () => {
-    window.dispatchEvent(new CustomEvent('chat-unread-refresh'))
-    // 进入聊天页后，标记所有未读对话为已读
-    for (const c of contacts.value) {
-      if (c.unreadCount > 0) {
-        const params = {}; if (c.productId) params.productId = c.productId
-        chatAPI.markRead(c.contactId, params).catch(() => {})
-      }
-    }
-    fetchContacts()
-  })
+  fetchContacts()
   focusUserSearchInput()
 })
 </script>

@@ -37,10 +37,15 @@ const fetchUnread = async () => {
 }
 const clearUnread = () => { unreadCount.value = 0; fetchUnread() }
 
+const handleUnreadDelta = (e) => {
+  unreadCount.value = Math.max(0, unreadCount.value + (e.detail || 0))
+}
+
 onMounted(() => {
   fetchUnread()
   unreadTimer = setInterval(fetchUnread, 30000)
   window.addEventListener('chat-unread-refresh', fetchUnread)
+  window.addEventListener('chat-unread-delta', handleUnreadDelta)
 })
 onBeforeUnmount(() => {
   if (unreadTimer) clearInterval(unreadTimer)
