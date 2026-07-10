@@ -57,7 +57,8 @@
               <span class="product-bar-title">{{ productInfo.title }}</span>
               <span class="product-bar-price">¥{{ productInfo.price }}</span>
             </div>
-            <button v-if="!isProductOwner" class="product-bar-btn" @click.stop="handleProductAction">立即购买</button>
+            <button v-if="!isProductOwner && canBuyProduct" class="product-bar-btn" @click.stop="handleProductAction">去购买</button>
+            <button v-if="!isProductOwner && canSwapProduct" class="product-bar-btn swap" @click.stop="handleSwapProduct">去交换</button>
           </div>
 
           <div class="message-list" ref="msgList">
@@ -182,6 +183,8 @@ const router = useRouter()
 const contacts = ref([])
 const productInfo = ref(null)
 const isProductOwner = computed(() => productInfo.value && Number(productInfo.value.sellerId) === Number(myId))
+const canBuyProduct = computed(() => productInfo.value?.status === 'ACTIVE' && productInfo.value?.tradeMode !== 'SWAP')
+const canSwapProduct = computed(() => productInfo.value?.status === 'ACTIVE' && (productInfo.value?.tradeMode === 'SWAP' || productInfo.value?.tradeMode === 'BOTH'))
 const messages = ref([])
 const activeContact = ref(null)
 const activeContactName = ref('')
@@ -366,6 +369,10 @@ const handleProductAction = async () => {
   } catch (e) {
     alert(e?.message || '下单失败')
   }
+}
+
+const handleSwapProduct = () => {
+  if (activeProductId.value) router.push(`/swap/propose/${activeProductId.value}`)
 }
 
 const goToUserProfile = async () => {
@@ -785,6 +792,8 @@ onActivated(() => {
 .product-bar-price { font-size: 16px; color: var(--danger); font-weight: bold; }
 .product-bar-btn { flex-shrink: 0; padding: 6px 16px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
 .product-bar-btn:hover { background: var(--primary-hover); }
+.product-bar-btn.swap { background: #52c41a; }
+.product-bar-btn.swap:hover { background: #73d13d; }
 .message-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .message { max-width: 70%; align-self: flex-start; }
 .message.mine { align-self: flex-end; }
