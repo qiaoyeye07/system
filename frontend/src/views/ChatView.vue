@@ -222,6 +222,7 @@ const ratingComment = ref('')
 const ratingOrderId = ref(null)
 const ratingRatedUserId = ref(null)
 const ratedOrders = ref(new Set(JSON.parse(localStorage.getItem('ratedOrders') || '[]')))
+const swapActions = ref(JSON.parse(localStorage.getItem('swapActions') || '{}'))
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -518,7 +519,11 @@ const parseOrderCard = (msg) => {
         SHIPPED: '卖家已发货',
         COMPLETED: '交易已完成',
         CANCELLED: '订单已取消',
-        DISPUTE: '订单纠纷中'
+        DISPUTE: '订单纠纷中',
+        PENDING_CONFIRM: '等待卖家确认交换',
+        CONFIRMED: '交换已确认，请尽快发货',
+        BOTH_SHIPPED: '双方已发货，请确认收货',
+        REJECTED: '交换已拒绝'
       }
       data.text = statusTexts[data.orderStatus] || '订单状态更新'
     }
@@ -556,14 +561,22 @@ const getOrderCardActions = (msg) => {
     return actions
   }
 
-  // 交换：已确认 → 双方都可以发货
+  // 交换：已确认 → 双方都可以发货（已发过的灰色）
   if (isSwap && status === 'CONFIRMED' && (isBuyer || isSeller)) {
-    actions.push(btn('立即发货', 'ship', 'card-btn-primary', () => showShipInput(card.orderId)))
+    if (swapActions.value[card.orderId + '_ship_' + myId]) {
+      actions.push(btn('已发货', 'shipped', 'card-btn-disabled', null))
+    } else {
+      actions.push(btn('立即发货', 'ship', 'card-btn-primary', () => doSwapShip(card.orderId)))
+    }
   }
 
-  // 交换：双方已发货 → 都可以收货
+  // 交换：双方已发货 → 都可以收货（已收过的灰色）
   if (isSwap && status === 'BOTH_SHIPPED' && (isBuyer || isSeller)) {
-    actions.push(btn('确认收货', 'receive', 'card-btn-primary', () => handleSwapAction(card.orderId, 'receive')))
+    if (swapActions.value[card.orderId + '_recv_' + myId]) {
+      actions.push(btn('已收货', 'received', 'card-btn-disabled', null))
+    } else {
+      actions.push(btn('确认收货', 'receive', 'card-btn-primary', () => doSwapReceive(card.orderId)))
+    }
   }
 
   // 交换：完成 → 双方可评价
@@ -604,7 +617,7 @@ const getOrderCardActions = (msg) => {
   if (status === 'SHIPPED' && isBuyer) {
     actions.push(btn('确认收货', 'receive', 'card-btn-primary', () => handleOrderAction(card.orderId, 'receive')))
   }
-  if (status === 'COMPLETED' && isBuyer) {
+  if (!isSwap && status === 'COMPLETED' && isBuyer) {
     if (ratedOrders.value.has(card.orderId)) {
       actions.push(btn('已评价', 'rated', 'card-btn-disabled', null))
     } else {
@@ -656,8 +669,31 @@ const handleSwapAction = async (orderId, action) => {
   try {
     if (action === 'agreeSwap') await swapAPI.agree(orderId)
     else if (action === 'rejectSwap') await swapAPI.reject(orderId)
-    else if (action === 'receive') await swapAPI.receive(orderId)
     alert('操作成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) { alert(e?.message || '操作失败') }
+}
+
+const doSwapShip = async (orderId) => {
+  const info = prompt('请输入物流信息（快递公司+单号）：')
+  if (!info) return
+  try {
+    await swapAPI.ship(orderId, { logisticsInfo: info })
+    swapActions.value[orderId + '_ship_' + myId] = true
+    localStorage.setItem('swapActions', JSON.stringify(swapActions.value))
+    alert('发货成功')
+    fetchMessages()
+    fetchContacts()
+  } catch (e) { alert(e?.message || '操作失败') }
+}
+
+const doSwapReceive = async (orderId) => {
+  try {
+    await swapAPI.receive(orderId)
+    swapActions.value[orderId + '_recv_' + myId] = true
+    localStorage.setItem('swapActions', JSON.stringify(swapActions.value))
+    alert('收货成功')
     fetchMessages()
     fetchContacts()
   } catch (e) { alert(e?.message || '操作失败') }
