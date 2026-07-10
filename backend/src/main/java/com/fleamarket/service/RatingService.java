@@ -66,6 +66,7 @@ public class RatingService {
         return toResponse(rating);
     }
 
+    @Transactional(readOnly = true)
     public List<RatingResponse> getUserRatings(Long userId) {
         return ratingRepository.findByRatedUserId(userId).stream()
                 .map(this::toResponse)
