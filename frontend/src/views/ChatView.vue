@@ -218,7 +218,7 @@ const ratingScore = ref(5)
 const ratingComment = ref('')
 const ratingOrderId = ref(null)
 const ratingRatedUserId = ref(null)
-const ratedOrders = ref(new Set())
+const ratedOrders = ref(new Set(JSON.parse(localStorage.getItem('ratedOrders') || '[]')))
 const contextMenu = ref({ visible: false, x: 0, y: 0, contact: null })
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const myId = user?.id
@@ -672,6 +672,7 @@ const doRating = async () => {
     await ratingAPI.submit({ orderId: ratingOrderId.value, score: ratingScore.value, comment: ratingComment.value.trim() })
     showRatingModal.value = false
     ratedOrders.value.add(ratingOrderId.value)
+    localStorage.setItem('ratedOrders', JSON.stringify([...ratedOrders.value]))
     alert('评价成功')
     fetchMessages()
     fetchContacts()
