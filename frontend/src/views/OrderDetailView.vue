@@ -117,7 +117,7 @@
           </div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="showShipDialog = false">取消</button>
-            <button class="btn-primary" @click="confirmShip">确认发货</button>
+            <button class="btn-primary" @click="doShip" :disabled="!shipInfo.trim()">确认发货</button>
           </div>
         </div>
       </div>
